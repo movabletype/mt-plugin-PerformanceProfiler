@@ -1,0 +1,24 @@
+id: PerformanceProfiler
+name: PerformanceProfiler
+version: 0.0.1
+
+description: <__trans phrase="Recored performace profile via Devel::NYTProf">
+author_name: Taku Amano
+author_link: http://blog.taaas.jp/
+plugin_link: http://blog.taaas.jp/mt/mt-plugin-PerformanceProfiler/
+
+config_settings:
+  PerformanceProfilerPath:
+    default: ""
+  PerformanceProfilerFrequency:
+    default: 10
+  PerformanceProfilerMaxFiles:
+    default: 1000
+
+callbacks:
+  MT::App::CMS::init_app: $PerformanceProfiler::MT::Plugin::PerformanceProfiler::init_app
+  build_file_filter:
+    priority: 10
+    handler: $PerformanceProfiler::MT::Plugin::PerformanceProfiler::build_file_filter
+  build_page: $PerformanceProfiler::MT::Plugin::PerformanceProfiler::build_page
+  take_down: $PerformanceProfiler::MT::Plugin::PerformanceProfiler::take_down
