@@ -3,9 +3,8 @@ name: PerformanceProfiler
 version: 0.0.1
 
 description: <__trans phrase="Recored performace profile via Devel::NYTProf">
-author_name: Taku Amano
-author_link: http://blog.taaas.jp/
-plugin_link: http://blog.taaas.jp/mt/mt-plugin-PerformanceProfiler/
+author_name: Six Apart Ltd.
+author_link: https://www.movabletype.org/
 
 config_settings:
   PerformanceProfilerPath:
