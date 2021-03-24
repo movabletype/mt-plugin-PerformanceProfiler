@@ -5,7 +5,7 @@ This plugin enables you to recored performace profile via Devel::NYTProf.
 
 ## Screenshot
 
-![Screenshot](https://raw.githubusercontent.com/usualoma/mt-plugin-PerformanceProfiler/master/artwork/screenshot.png)
+![Screenshot](https://raw.githubusercontent.com/usualoma/mt-plugin-PerformanceProfiler/main/artwork/screenshot.png)
 
 ## Installation
 
