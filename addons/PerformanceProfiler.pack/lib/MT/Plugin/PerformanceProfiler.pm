@@ -15,6 +15,7 @@ use MT::Plugin::PerformanceProfiler::Guard;
 use constant FILE_PREFIX => 'b-';
 
 our ( $current_file, $current_metadata, $current_start );
+our ( $freq, $counter );
 
 sub path {
     MT->config->PerformanceProfilerPath;
@@ -117,6 +118,10 @@ sub init_app {
     my $dir = path()
         or return;
 
+    $freq = MT->config->PerformanceProfilerFrequency
+        or return;
+    $counter = int( rand($freq) );
+
     if ( profiler_enabled('KYTProf') ) {
         require Devel::KYTProf;
         Devel::KYTProf->apply_prof('DBI');
@@ -145,9 +150,10 @@ sub _build_file_filter {
 
     finish_profile();
 
-    my $freq = MT->config->PerformanceProfilerFrequency
-        or return;    # disabled
-    return unless int( rand($freq) ) == 0;
+    if ( $freq > 1 ) {
+        $counter = ( $counter + 1 ) % $freq;
+        return unless $counter == 0;
+    }
 
     return unless -d $dir;
 
