@@ -74,7 +74,7 @@ sub finish_profile {
     undef $current_file;
 }
 
-sub cleanup {
+sub remove_old_files {
     my $max_files = MT->config->PerformanceProfilerMaxFiles
         or return;    # unlimited
 
@@ -89,7 +89,7 @@ sub cleanup {
     for my $profiler ( keys %files ) {
         my @files = map { $_->[1] }
             sort { $b->[0] <=> $a->[0] }
-            map  { [ ( stat($_) )[10] => $_ ] } @{ $files{$profiler} };
+            map { [ ( stat($_) )[10] => $_ ] } @{ $files{$profiler} };
         for my $f ( @files[ $max_files - 1 .. $#files ] ) {
             unlink $f;
         }
@@ -119,7 +119,7 @@ sub init_app {
     1;
 }
 
-sub build_file_filter {
+sub _build_file_filter {
     my ( $cb, %param ) = @_;
 
     my $dir = path()
@@ -137,16 +137,19 @@ sub build_file_filter {
     $filename =~ s{^/|/$}{}g;
     $filename =~ s{[^0-9a-zA-Z_-]}{_}g;
 
-    cleanup();
+    remove_old_files();
     enable_profile( File::Spec->catfile( $dir, FILE_PREFIX . '%s-' . $filename ) );
+}
 
-    1;
+sub build_file_filter {
+    _build_file_filter(@_);
+    1;    # always returns true
 }
 
 sub build_page {
     my ($cb) = @_;
 
-    enabled() or return;
+    return 1 unless enabled();
     finish_profile();
 
     1;
@@ -155,7 +158,7 @@ sub build_page {
 sub take_down {
     my ($cb) = @_;
 
-    enabled() or return;
+    return 1 unless enabled();
     finish_profile();
 
     1;
