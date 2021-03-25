@@ -8,6 +8,7 @@ use File::Spec;
 use File::Basename qw(basename);
 use MT::Util ();
 use MT::Plugin::PerformanceProfiler::KYTProfLogger;
+use MT::Plugin::PerformanceProfiler::Guard;
 
 use constant FILE_PREFIX => 'b-';
 
@@ -77,6 +78,16 @@ sub finish_profile {
     undef $current_file;
 }
 
+sub cancel_profile {
+    my $file = $current_file
+        or return;
+
+    finish_profile;
+
+    unlink sprintf( $file, 'nyt' ) if profiler_enabled('NYTProf');
+    unlink sprintf( $file, 'kyt' ) if profiler_enabled('KYTProf');
+}
+
 sub remove_old_files {
     my $max_files = MT->config->PerformanceProfilerMaxFiles
         or return;    # unlimited
@@ -137,6 +148,9 @@ sub _build_file_filter {
 
     return unless -d $dir;
 
+    $param{context}->stash( 'performance_profiler_guard',
+        MT::Plugin::PerformanceProfiler::Guard->new( \&cancel_profile ) );
+
     my $filename = $param{File};
     $filename =~ s{^/|/$}{}g;
     $filename =~ s{[^0-9a-zA-Z_-]}{_}g;
@@ -157,15 +171,6 @@ sub build_file_filter {
 }
 
 sub build_page {
-    my ($cb) = @_;
-
-    return 1 unless enabled();
-    finish_profile();
-
-    1;
-}
-
-sub take_down {
     my ($cb) = @_;
 
     return 1 unless enabled();

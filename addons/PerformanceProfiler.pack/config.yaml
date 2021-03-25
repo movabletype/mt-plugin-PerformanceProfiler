@@ -18,4 +18,3 @@ callbacks:
   MT::App::CMS::init_app: $PerformanceProfiler::MT::Plugin::PerformanceProfiler::init_app
   build_file_filter: $PerformanceProfiler::MT::Plugin::PerformanceProfiler::build_file_filter
   build_page: $PerformanceProfiler::MT::Plugin::PerformanceProfiler::build_page
-  take_down: $PerformanceProfiler::MT::Plugin::PerformanceProfiler::take_down
