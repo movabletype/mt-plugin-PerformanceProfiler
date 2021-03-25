@@ -7,6 +7,7 @@ use utf8;
 use File::Spec;
 use File::Basename qw(basename);
 use MT::Util ();
+use MT::Util::Digest::SHA;
 use MT::Plugin::PerformanceProfiler::KYTProfLogger;
 use MT::Plugin::PerformanceProfiler::Guard;
 
@@ -151,15 +152,14 @@ sub _build_file_filter {
     $param{context}->stash( 'performance_profiler_guard',
         MT::Plugin::PerformanceProfiler::Guard->new( \&cancel_profile ) );
 
-    my $filename = $param{File};
-    $filename =~ s{^/|/$}{}g;
-    $filename =~ s{[^0-9a-zA-Z_-]}{_}g;
+    my $filename = MT::Util::Digest::SHA::sha1_hex( $param{File} );
 
     remove_old_files();
     enable_profile(
         File::Spec->catfile( $dir, FILE_PREFIX . '%s-' . $filename ),
         {   version         => $MT::VERSION,
             product_version => $MT::PRODUCT_VERSION,
+            file            => $param{File},
             archive_type    => $param{ArchiveType},
         },
     );
