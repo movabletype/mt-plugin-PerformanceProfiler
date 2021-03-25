@@ -9,12 +9,17 @@ use MT::Util::Digest::SHA;
 
 sub new {
     my $class = shift;
-    my ( $file_name, $metadata ) = @_;
+    my ($file_name) = @_;
     open my $fh, '>', $file_name;
-    print {$fh} MT::Util::to_json($metadata) . "\n";
     my $self = { fh => $fh };
     bless $self, $class;
     $self;
+}
+
+sub print {
+    my $self = shift;
+    my ($msg) = @_;
+    print { $self->{fh} } $msg;
 }
 
 sub log {
@@ -27,17 +32,20 @@ sub log {
             : substr( MT::Util::Digest::SHA::sha1_hex($_), 0, 8 );
     } split( /, /, ( $args{data}{sql_binds} =~ m{\A\(bind: (.*)\)\z} )[0] );
 
-    print { $self->{fh} } MT::Util::to_json(
-        {   runtime          => $args{time},
-            operation_class  => $args{module},
-            operation_method => $args{method},
-            caller_package   => $args{package},
-            caller_file_name => $args{file},
-            caller_line      => $args{line},
-            sql              => $args{data}{sql},
-            sql_binds        => \@binds,
-        }
-    ) . "\n";
+    $self->print(
+        MT::Util::to_json(
+            {   runtime          => $args{time},
+                operation_class  => $args{module},
+                operation_method => $args{method},
+                caller_package   => $args{package},
+                caller_file_name => $args{file},
+                caller_line      => $args{line},
+                sql              => $args{data}{sql},
+                sql_binds        => \@binds,
+            }
+            )
+            . "\n"
+    );
 }
 
 1;

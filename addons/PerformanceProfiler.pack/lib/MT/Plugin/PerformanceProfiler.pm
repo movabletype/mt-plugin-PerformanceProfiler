@@ -6,6 +6,7 @@ use utf8;
 
 use File::Spec;
 use File::Basename qw(basename);
+use Time::HiRes qw(gettimeofday tv_interval);
 use MT::Util ();
 use MT::Util::Digest::SHA;
 use MT::Plugin::PerformanceProfiler::KYTProfLogger;
@@ -13,7 +14,7 @@ use MT::Plugin::PerformanceProfiler::Guard;
 
 use constant FILE_PREFIX => 'b-';
 
-our ( $current_file, $current_metadata );
+our ( $current_file, $current_metadata, $current_start );
 
 sub path {
     MT->config->PerformanceProfilerPath;
@@ -34,16 +35,14 @@ sub enable_profile {
 
     $current_file     = $file;
     $current_metadata = $metadata;
+    $current_start    = [gettimeofday];
 
     if ( profiler_enabled('KYTProf') ) {
 
         # XXX: force re-initialize $Devel::KYTProf::Profiler::DBI::_TRACER
         Devel::KYTProf::Profiler::DBI->apply;
         Devel::KYTProf->logger(
-            MT::Plugin::PerformanceProfiler::KYTProfLogger->new(
-                sprintf( $file, 'kyt' ), $metadata
-            )
-        );
+            MT::Plugin::PerformanceProfiler::KYTProfLogger->new( sprintf( $file, 'kyt' ) ) );
     }
 
     if ( profiler_enabled('NYTProf') ) {
@@ -65,6 +64,8 @@ sub finish_profile_kytprof {
 sub finish_profile {
     return unless $current_file;
 
+    $current_metadata->{runtime} = tv_interval($current_start);
+
     if ( profiler_enabled('NYTProf') ) {
         DB::finish_profile();
         my $file = sprintf( $current_file, 'nyt' );
@@ -74,6 +75,7 @@ sub finish_profile {
 
     if ( profiler_enabled('KYTProf') ) {
         finish_profile_kytprof();
+        Devel::KYTProf->logger->print( MT::Util::to_json($current_metadata) . "\n" );
     }
 
     undef $current_file;
