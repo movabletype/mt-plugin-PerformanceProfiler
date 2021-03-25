@@ -11,7 +11,7 @@ use MT::Plugin::PerformanceProfiler::KYTProfLogger;
 
 use constant FILE_PREFIX => 'b-';
 
-our $current_file;
+our ( $current_file, $current_metadata );
 
 sub path {
     MT->config->PerformanceProfilerPath;
@@ -27,17 +27,24 @@ sub profiler_enabled {
         split( /\s*,\s*/, MT->config('PerformanceProfilerProfilers') );
 }
 
-sub enable_profile {
-    my ($file) = @_;
+sub metadata {
+}
 
-    $current_file = $file;
+sub enable_profile {
+    my ( $file, $metadata ) = @_;
+
+    $current_file     = $file;
+    $current_metadata = $metadata;
 
     if ( profiler_enabled('KYTProf') ) {
 
         # XXX: force re-initialize $Devel::KYTProf::Profiler::DBI::_TRACER
         Devel::KYTProf::Profiler::DBI->apply;
         Devel::KYTProf->logger(
-            MT::Plugin::PerformanceProfiler::KYTProfLogger->new( sprintf( $file, 'kyt' ) ) );
+            MT::Plugin::PerformanceProfiler::KYTProfLogger->new(
+                sprintf( $file, 'kyt' ), $metadata
+            )
+        );
     }
 
     if ( profiler_enabled('NYTProf') ) {
@@ -52,12 +59,7 @@ sub finish_profile {
         DB::finish_profile();
         my $file = sprintf( $current_file, 'nyt' );
         open my $fh, '>>', $file;
-        print {$fh} '# '
-            . MT::Util::to_json(
-            {   VERSION         => $MT::VERSION,
-                PRODUCT_VERSION => $MT::PRODUCT_VERSION,
-            }
-            ) . "\n";
+        print {$fh} '# ' . MT::Util::to_json($current_metadata) . "\n";
     }
 
     if ( profiler_enabled('KYTProf') ) {
@@ -89,7 +91,7 @@ sub remove_old_files {
     for my $profiler ( keys %files ) {
         my @files = map { $_->[1] }
             sort { $b->[0] <=> $a->[0] }
-            map { [ ( stat($_) )[10] => $_ ] } @{ $files{$profiler} };
+            map  { [ ( stat($_) )[10] => $_ ] } @{ $files{$profiler} };
         for my $f ( @files[ $max_files - 1 .. $#files ] ) {
             unlink $f;
         }
@@ -138,7 +140,13 @@ sub _build_file_filter {
     $filename =~ s{[^0-9a-zA-Z_-]}{_}g;
 
     remove_old_files();
-    enable_profile( File::Spec->catfile( $dir, FILE_PREFIX . '%s-' . $filename ) );
+    enable_profile(
+        File::Spec->catfile( $dir, FILE_PREFIX . '%s-' . $filename ),
+        {   version         => $MT::VERSION,
+            product_version => $MT::PRODUCT_VERSION,
+            archive_type    => $param{ArchiveType},
+        },
+    );
 }
 
 sub build_file_filter {

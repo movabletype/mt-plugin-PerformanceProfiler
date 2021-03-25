@@ -9,8 +9,9 @@ use MT::Util::Digest::SHA;
 
 sub new {
     my $class = shift;
-    my ($file_name) = @_;
+    my ( $file_name, $metadata ) = @_;
     open my $fh, '>', $file_name;
+    print {$fh} MT::Util::to_json($metadata) . "\n";
     my $self = { fh => $fh };
     bless $self, $class;
     $self;
