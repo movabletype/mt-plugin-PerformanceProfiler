@@ -1,12 +1,12 @@
 id: PerformanceProfiler
-name: PerformanceProfiler
 version: 0.0.1
-
-description: <__trans phrase="Recored performace profile via Devel::NYTProf">
+description: <__trans phrase="Recored performace profile.">
 author_name: Six Apart Ltd.
 author_link: https://www.movabletype.org/
 
 config_settings:
+  PerformanceProfilerProfilers:
+    default: KYTProf
   PerformanceProfilerPath:
     default: ""
   PerformanceProfilerFrequency:
@@ -16,8 +16,6 @@ config_settings:
 
 callbacks:
   MT::App::CMS::init_app: $PerformanceProfiler::MT::Plugin::PerformanceProfiler::init_app
-  build_file_filter:
-    priority: 10
-    handler: $PerformanceProfiler::MT::Plugin::PerformanceProfiler::build_file_filter
+  build_file_filter: $PerformanceProfiler::MT::Plugin::PerformanceProfiler::build_file_filter
   build_page: $PerformanceProfiler::MT::Plugin::PerformanceProfiler::build_page
   take_down: $PerformanceProfiler::MT::Plugin::PerformanceProfiler::take_down
