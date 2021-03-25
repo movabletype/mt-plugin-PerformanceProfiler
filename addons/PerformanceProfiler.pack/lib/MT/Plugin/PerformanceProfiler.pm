@@ -27,9 +27,6 @@ sub profiler_enabled {
         split( /\s*,\s*/, MT->config('PerformanceProfilerProfilers') );
 }
 
-sub metadata {
-}
-
 sub enable_profile {
     my ( $file, $metadata ) = @_;
 
@@ -52,6 +49,17 @@ sub enable_profile {
     }
 }
 
+sub finish_profile_kytprof {
+
+    # FIXME: We want to release DBIx::Tracer in an implementation-independent way
+    return unless $Devel::KYTProf::Profiler::DBI::_TRACER;
+
+    Devel::KYTProf->mute($_) for qw(DBI DBI::st DBI::db);
+    undef $Devel::KYTProf::Profiler::DBI::_TRACER;
+    Devel::KYTProf->_orig_code( {} );
+    Devel::KYTProf->_prof_code( {} );
+}
+
 sub finish_profile {
     return unless $current_file;
 
@@ -63,14 +71,7 @@ sub finish_profile {
     }
 
     if ( profiler_enabled('KYTProf') ) {
-
-        # FIXME: We want to release DBIx::Tracer in an implementation-independent way
-        if ($Devel::KYTProf::Profiler::DBI::_TRACER) {
-            Devel::KYTProf->mute($_) for qw(DBI DBI::st DBI::db);
-            undef $Devel::KYTProf::Profiler::DBI::_TRACER;
-            Devel::KYTProf->_orig_code( {} );
-            Devel::KYTProf->_prof_code( {} );
-        }
+        finish_profile_kytprof();
     }
 
     undef $current_file;
@@ -106,6 +107,7 @@ sub init_app {
         require Devel::KYTProf;
         Devel::KYTProf->apply_prof('DBI');
         Devel::KYTProf->namespace_regex('MT::Template');
+        finish_profile_kytprof;
     }
 
     if ( profiler_enabled('NYTProf') ) {
