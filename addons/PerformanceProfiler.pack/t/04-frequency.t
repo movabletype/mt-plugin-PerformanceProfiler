@@ -61,7 +61,7 @@ MT->instance->rebuild( Blog => $blog1 );
 my @files = glob( File::Spec->catfile( $profiler_path, '*' ) );
 my $count = scalar @files;
 
-ok $count > 3;
-ok $count < 10;
+ok $count > 1;
+ok $count < 12;
 
 done_testing;
