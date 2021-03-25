@@ -1,7 +1,7 @@
 use ExtUtils::MakeMaker;
 use YAML;
 
-my $config = YAML::LoadFile((glob('./plugins/*/config.yaml'))[0]);
+my $config = YAML::LoadFile((glob('./addons/*/config.yaml'))[0]);
 
 WriteMakefile(
     NAME     => $config->{name},
