@@ -6,9 +6,12 @@ use utf8;
 
 use File::Spec;
 use File::Basename qw(basename);
+use MT::Util ();
 use MT::Plugin::PerformanceProfiler::KYTProfLogger;
 
 use constant FILE_PREFIX => 'b-';
+
+our $current_file;
 
 sub path {
     MT->config->PerformanceProfilerPath;
@@ -27,9 +30,7 @@ sub profiler_enabled {
 sub enable_profile {
     my ($file) = @_;
 
-    if ( profiler_enabled('NYTProf') ) {
-        DB::enable_profile( sprintf( $file, 'nyt' ) );
-    }
+    $current_file = $file;
 
     if ( profiler_enabled('KYTProf') ) {
 
@@ -38,12 +39,25 @@ sub enable_profile {
         Devel::KYTProf->logger(
             MT::Plugin::PerformanceProfiler::KYTProfLogger->new( sprintf( $file, 'kyt' ) ) );
     }
+
+    if ( profiler_enabled('NYTProf') ) {
+        DB::enable_profile( sprintf( $file, 'nyt' ) );
+    }
 }
 
 sub finish_profile {
+    return unless $current_file;
 
     if ( profiler_enabled('NYTProf') ) {
-        DB::finish_profile();    # NYTProf
+        DB::finish_profile();
+        my $file = sprintf( $current_file, 'nyt' );
+        open my $fh, '>>', $file;
+        print {$fh} '# '
+            . MT::Util::to_json(
+            {   VERSION         => $MT::VERSION,
+                PRODUCT_VERSION => $MT::PRODUCT_VERSION,
+            }
+            ) . "\n";
     }
 
     if ( profiler_enabled('KYTProf') ) {
@@ -56,6 +70,8 @@ sub finish_profile {
             Devel::KYTProf->_prof_code( {} );
         }
     }
+
+    undef $current_file;
 }
 
 sub cleanup {
