@@ -18,7 +18,7 @@ BEGIN {
     $test_env      = MT::Test::Env->new(
         PerformanceProfilerPath      => $profiler_path,
         PerformanceProfilerFrequency => 1,
-        PerformanceProfilerMaxFiles  => 5,
+        PerformanceProfilerMaxFiles  => 10,
         PerformanceProfilerProfilers => 'KYTProf,NYTProf',
         PluginPath                   => [ Cwd::realpath("$FindBin::Bin/../../../addons") ],
     );
@@ -41,9 +41,13 @@ my $blog1_name = 'PerformanceProfiler-' . time();
 my $super      = 'super';
 
 my $objs = MT::Test::Fixture->prepare(
-    {   author => [ { 'name' => $super }, ],
-        blog   => [ { name   => $blog1_name, }, ],
-        entry  => [
+    {   author  => [ { 'name' => $super }, ],
+        website => [
+            {   name     => $blog1_name,
+                site_url => 'http://example.com/blog/',
+            },
+        ],
+        entry => [
             map {
                 my $name = 'PerformanceProfilerEntry-' . $_ . time();
                 +{  basename    => $name,
@@ -57,16 +61,16 @@ my $objs = MT::Test::Fixture->prepare(
     }
 );
 
-my $blog1 = MT->model('blog')->load( { name => $blog1_name } ) or die;
+my $blog1 = MT->model('website')->load( { name => $blog1_name } ) or die;
 
 MT->instance->rebuild_indexes( Blog => $blog1 );
 my @profiles_for_index        = glob( File::Spec->catfile( $profiler_path, '*' ) );
 my @profiles_for_index_ctimes = map { ( stat($_) )[10] } @profiles_for_index;
-is scalar(@profiles_for_index), 4;
+is scalar(@profiles_for_index), 12;
 
 MT->instance->rebuild( Blog => $blog1 );
 my @profiles_for_all = glob( File::Spec->catfile( $profiler_path, '*' ) );
-is scalar(@profiles_for_all), 10;
+is scalar(@profiles_for_all), 20;
 cmp_deeply( [ map { ( stat($_) )[10] } @profiles_for_all ],
     noneof(@profiles_for_index_ctimes), 'removed' );
 

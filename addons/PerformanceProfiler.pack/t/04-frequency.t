@@ -40,7 +40,11 @@ my $super      = 'super';
 
 my $objs = MT::Test::Fixture->prepare(
     {   author => [ { 'name' => $super }, ],
-        blog   => [ { name   => $blog1_name, }, ],
+        website => [
+            {   name     => $blog1_name,
+                site_url => 'http://example.com/blog/',
+            },
+        ],
         entry  => [
             map {
                 my $name = 'PerformanceProfilerEntry-' . $_ . time();
@@ -55,13 +59,13 @@ my $objs = MT::Test::Fixture->prepare(
     }
 );
 
-my $blog1 = MT->model('blog')->load( { name => $blog1_name } ) or die;
+my $blog1 = MT->model('website')->load( { name => $blog1_name } ) or die;
 
 MT->instance->rebuild( Blog => $blog1 );
 my @files = glob( File::Spec->catfile( $profiler_path, '*' ) );
 my $count = scalar @files;
 
 ok $count > 1;
-ok $count < 12;
+ok $count < 17;
 
 done_testing;
