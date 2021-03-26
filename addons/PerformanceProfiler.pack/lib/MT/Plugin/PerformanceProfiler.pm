@@ -1,5 +1,6 @@
 package MT::Plugin::PerformanceProfiler;
 
+use v5.10;
 use strict;
 use warnings;
 use utf8;
@@ -16,19 +17,15 @@ use constant FILE_PREFIX => 'b-';
 
 our ( $current_file, $current_metadata, $current_start );
 our ( $freq, $counter );
+our (%profilers);
 
 sub path {
-    MT->config->PerformanceProfilerPath;
+    state $path = MT->config->PerformanceProfilerPath;
+    return $path;
 }
 
 sub enabled {
     return !!path();
-}
-
-sub profiler_enabled {
-    my ($profiler) = @_;
-    return grep { $_ eq $profiler }
-        split( /\s*,\s*/, MT->config('PerformanceProfilerProfilers') );
 }
 
 sub enable_profile {
@@ -38,7 +35,7 @@ sub enable_profile {
     $current_metadata = $metadata;
     $current_start    = [gettimeofday];
 
-    if ( profiler_enabled('KYTProf') ) {
+    if ( $profilers{KYTProf} ) {
 
         # XXX: force re-initialize $Devel::KYTProf::Profiler::DBI::_TRACER
         Devel::KYTProf::Profiler::DBI->apply;
@@ -46,7 +43,7 @@ sub enable_profile {
             MT::Plugin::PerformanceProfiler::KYTProfLogger->new( sprintf( $file, 'kyt' ) ) );
     }
 
-    if ( profiler_enabled('NYTProf') ) {
+    if ( $profilers{NYTProf} ) {
         DB::enable_profile( sprintf( $file, 'nyt' ) );
     }
 }
@@ -67,14 +64,14 @@ sub finish_profile {
 
     $current_metadata->{runtime} = tv_interval($current_start);
 
-    if ( profiler_enabled('NYTProf') ) {
+    if ( $profilers{NYTProf} ) {
         DB::finish_profile();
         my $file = sprintf( $current_file, 'nyt' );
         open my $fh, '>>', $file;
         print {$fh} '# ' . MT::Util::to_json($current_metadata) . "\n";
     }
 
-    if ( profiler_enabled('KYTProf') ) {
+    if ( $profilers{KYTProf} ) {
         finish_profile_kytprof();
         Devel::KYTProf->logger->print( MT::Util::to_json($current_metadata) . "\n" );
     }
@@ -88,8 +85,8 @@ sub cancel_profile {
 
     finish_profile;
 
-    unlink sprintf( $file, 'nyt' ) if profiler_enabled('NYTProf');
-    unlink sprintf( $file, 'kyt' ) if profiler_enabled('KYTProf');
+    unlink sprintf( $file, 'nyt' ) if $profilers{NYTProf};
+    unlink sprintf( $file, 'kyt' ) if $profilers{KYTProf};
 }
 
 sub remove_old_files {
@@ -122,14 +119,17 @@ sub init_app {
         or return;
     $counter = int( rand($freq) );
 
-    if ( profiler_enabled('KYTProf') ) {
+    %profilers = map { $_ => 1 }
+        split( /\s*,\s*/, MT->config('PerformanceProfilerProfilers') );
+
+    if ( $profilers{KYTProf} ) {
         require Devel::KYTProf;
         Devel::KYTProf->apply_prof('DBI');
         Devel::KYTProf->namespace_regex('MT::Template');
         finish_profile_kytprof;
     }
 
-    if ( profiler_enabled('NYTProf') ) {
+    if ( $profilers{NYTProf} ) {
         my @opts = qw( sigexit=int savesrc=0 start=no );
         $ENV{"NYTPROF"} = join ":", @opts;
         require Devel::NYTProf;
