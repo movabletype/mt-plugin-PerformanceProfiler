@@ -5,11 +5,11 @@ use strict;
 use warnings;
 use utf8;
 
+use Digest::SHA1 qw(sha1_hex);
 use File::Spec;
 use File::Basename qw(basename);
+use JSON;
 use Time::HiRes qw(gettimeofday tv_interval);
-use MT::Util ();
-use MT::Util::Digest::SHA;
 use MT::Plugin::PerformanceProfiler::KYTProfLogger;
 use MT::Plugin::PerformanceProfiler::Guard;
 
@@ -18,6 +18,8 @@ use constant FILE_PREFIX => 'b-';
 our ( $current_file, $current_metadata, $current_start );
 our ( $freq, $counter );
 our (%profilers);
+
+our $json_encoder = JSON->new->utf8;
 
 sub path {
     state $path = MT->config->PerformanceProfilerPath;
@@ -40,7 +42,11 @@ sub enable_profile {
         # XXX: force re-initialize $Devel::KYTProf::Profiler::DBI::_TRACER
         Devel::KYTProf::Profiler::DBI->apply;
         Devel::KYTProf->logger(
-            MT::Plugin::PerformanceProfiler::KYTProfLogger->new( sprintf( $file, 'kyt' ) ) );
+            MT::Plugin::PerformanceProfiler::KYTProfLogger->new(
+                sprintf( $file, 'kyt' ),
+                $json_encoder
+            )
+        );
     }
 
     if ( $profilers{NYTProf} ) {
@@ -68,12 +74,12 @@ sub finish_profile {
         DB::finish_profile();
         my $file = sprintf( $current_file, 'nyt' );
         open my $fh, '>>', $file;
-        print {$fh} '# ' . MT::Util::to_json($current_metadata) . "\n";
+        print {$fh} '# ' . $json_encoder->encode($current_metadata) . "\n";
     }
 
     if ( $profilers{KYTProf} ) {
         finish_profile_kytprof();
-        Devel::KYTProf->logger->print( MT::Util::to_json($current_metadata) . "\n" );
+        Devel::KYTProf->logger->print( $json_encoder->encode($current_metadata) . "\n" );
     }
 
     undef $current_file;
@@ -156,7 +162,7 @@ sub _build_file_filter {
     $param{context}->stash( 'performance_profiler_guard',
         MT::Plugin::PerformanceProfiler::Guard->new( \&cancel_profile ) );
 
-    my $filename = MT::Util::Digest::SHA::sha1_hex( $param{File} );
+    my $filename = sha1_hex( $param{File} );
 
     remove_old_files();
     enable_profile(
