@@ -137,8 +137,6 @@ sub init_app {
 
     mkdir $dir unless -d $dir;
 
-    finish_profile();
-
     1;
 }
 
@@ -147,8 +145,6 @@ sub _build_file_filter {
 
     my $dir = path()
         or return;
-
-    finish_profile();
 
     if ( $freq > 1 ) {
         $counter = ( $counter + 1 ) % $freq;
