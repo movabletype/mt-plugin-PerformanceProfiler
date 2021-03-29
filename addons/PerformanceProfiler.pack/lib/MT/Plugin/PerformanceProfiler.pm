@@ -1,33 +1,33 @@
 package MT::Plugin::PerformanceProfiler;
 
+use v5.10;
 use strict;
 use warnings;
 use utf8;
 
+use Digest::SHA1 qw(sha1_hex);
 use File::Spec;
 use File::Basename qw(basename);
+use JSON;
 use Time::HiRes qw(gettimeofday tv_interval);
-use MT::Util ();
-use MT::Util::Digest::SHA;
 use MT::Plugin::PerformanceProfiler::KYTProfLogger;
 use MT::Plugin::PerformanceProfiler::Guard;
 
 use constant FILE_PREFIX => 'b-';
 
 our ( $current_file, $current_metadata, $current_start );
+our ( $freq, $counter );
+our (%profilers);
+
+our $json_encoder = JSON->new->utf8;
 
 sub path {
-    MT->config->PerformanceProfilerPath;
+    state $path = MT->config->PerformanceProfilerPath;
+    return $path;
 }
 
 sub enabled {
     return !!path();
-}
-
-sub profiler_enabled {
-    my ($profiler) = @_;
-    return grep { $_ eq $profiler }
-        split( /\s*,\s*/, MT->config('PerformanceProfilerProfilers') );
 }
 
 sub enable_profile {
@@ -37,15 +37,19 @@ sub enable_profile {
     $current_metadata = $metadata;
     $current_start    = [gettimeofday];
 
-    if ( profiler_enabled('KYTProf') ) {
+    if ( $profilers{KYTProf} ) {
 
         # XXX: force re-initialize $Devel::KYTProf::Profiler::DBI::_TRACER
         Devel::KYTProf::Profiler::DBI->apply;
         Devel::KYTProf->logger(
-            MT::Plugin::PerformanceProfiler::KYTProfLogger->new( sprintf( $file, 'kyt' ) ) );
+            MT::Plugin::PerformanceProfiler::KYTProfLogger->new(
+                sprintf( $file, 'kyt' ),
+                $json_encoder
+            )
+        );
     }
 
-    if ( profiler_enabled('NYTProf') ) {
+    if ( $profilers{NYTProf} ) {
         DB::enable_profile( sprintf( $file, 'nyt' ) );
     }
 }
@@ -66,16 +70,16 @@ sub finish_profile {
 
     $current_metadata->{runtime} = tv_interval($current_start);
 
-    if ( profiler_enabled('NYTProf') ) {
+    if ( $profilers{NYTProf} ) {
         DB::finish_profile();
         my $file = sprintf( $current_file, 'nyt' );
         open my $fh, '>>', $file;
-        print {$fh} '# ' . MT::Util::to_json($current_metadata) . "\n";
+        print {$fh} '# ' . $json_encoder->encode($current_metadata) . "\n";
     }
 
-    if ( profiler_enabled('KYTProf') ) {
+    if ( $profilers{KYTProf} ) {
         finish_profile_kytprof();
-        Devel::KYTProf->logger->print( MT::Util::to_json($current_metadata) . "\n" );
+        Devel::KYTProf->logger->print( $json_encoder->encode($current_metadata) . "\n" );
     }
 
     undef $current_file;
@@ -87,8 +91,8 @@ sub cancel_profile {
 
     finish_profile;
 
-    unlink sprintf( $file, 'nyt' ) if profiler_enabled('NYTProf');
-    unlink sprintf( $file, 'kyt' ) if profiler_enabled('KYTProf');
+    unlink sprintf( $file, 'nyt' ) if $profilers{NYTProf};
+    unlink sprintf( $file, 'kyt' ) if $profilers{KYTProf};
 }
 
 sub remove_old_files {
@@ -117,22 +121,27 @@ sub init_app {
     my $dir = path()
         or return;
 
-    if ( profiler_enabled('KYTProf') ) {
+    $freq = MT->config->PerformanceProfilerFrequency
+        or return;
+    $counter = int( rand($freq) );
+
+    %profilers = map { $_ => 1 }
+        split( /\s*,\s*/, MT->config('PerformanceProfilerProfilers') );
+
+    if ( $profilers{KYTProf} ) {
         require Devel::KYTProf;
         Devel::KYTProf->apply_prof('DBI');
         Devel::KYTProf->namespace_regex('MT::Template');
         finish_profile_kytprof;
     }
 
-    if ( profiler_enabled('NYTProf') ) {
+    if ( $profilers{NYTProf} ) {
         my @opts = qw( sigexit=int savesrc=0 start=no );
         $ENV{"NYTPROF"} = join ":", @opts;
         require Devel::NYTProf;
     }
 
     mkdir $dir unless -d $dir;
-
-    finish_profile();
 
     1;
 }
@@ -143,18 +152,17 @@ sub _build_file_filter {
     my $dir = path()
         or return;
 
-    finish_profile();
-
-    my $freq = MT->config->PerformanceProfilerFrequency
-        or return;    # disabled
-    return unless int( rand($freq) ) == 0;
+    if ( $freq > 1 ) {
+        $counter = ( $counter + 1 ) % $freq;
+        return unless $counter == 0;
+    }
 
     return unless -d $dir;
 
     $param{context}->stash( 'performance_profiler_guard',
         MT::Plugin::PerformanceProfiler::Guard->new( \&cancel_profile ) );
 
-    my $filename = MT::Util::Digest::SHA::sha1_hex( $param{File} );
+    my $filename = sha1_hex( $param{File} );
 
     remove_old_files();
     enable_profile(
