@@ -38,13 +38,16 @@ sub enable_profile {
     $current_start    = [gettimeofday];
 
     if ( $profilers{KYTProf} ) {
+        state $compress = MT->config->PerformanceProfilerCompress;
 
         # XXX: force re-initialize $Devel::KYTProf::Profiler::DBI::_TRACER
         Devel::KYTProf::Profiler::DBI->apply;
         Devel::KYTProf->logger(
             MT::Plugin::PerformanceProfiler::KYTProfLogger->new(
-                sprintf( $file, 'kyt' ),
-                $json_encoder
+                {   file_name => sprintf( $file, 'kyt' ),
+                    compress  => $compress,
+                    encoder   => $json_encoder,
+                }
             )
         );
     }

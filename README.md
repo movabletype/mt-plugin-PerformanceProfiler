@@ -52,6 +52,13 @@ If the number of saved files exceeds this number, the oldest one will be deleted
 
 The default value is "1000".
 
+### PerformanceProfilerCompress
+
+The compression level used by zlib.
+The value should either be a number between 0 and 9 (0 means no compression and 9 is maximum compression).
+
+The default value is "1" (means best speed).
+
 ## Requirements
 
 * Movable Type 7

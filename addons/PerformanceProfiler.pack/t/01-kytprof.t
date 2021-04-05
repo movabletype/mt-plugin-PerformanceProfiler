@@ -4,6 +4,7 @@ use FindBin;
 use Cwd;
 
 use lib Cwd::realpath("./t/lib"), "$FindBin::Bin/lib";
+use IO::Uncompress::Gunzip;
 use Test::More;
 use Test::Deep;
 use File::Spec;
@@ -75,7 +76,7 @@ cmp_deeply( [ map { ( stat($_) )[10] } @profiles_for_all ],
 
 my $footer = MT::Util::from_json(
     do {
-        open my $fh, '<', $profiles_for_all[0];
+        my $fh = IO::Uncompress::Gunzip->new($profiles_for_all[0]);
         my @lines = <$fh>;
         $lines[-1];
     }
