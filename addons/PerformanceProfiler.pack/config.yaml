@@ -4,6 +4,10 @@ description: <__trans phrase="Recored performace profile.">
 author_name: Six Apart Ltd.
 author_link: https://www.movabletype.org/
 
+l10n_lexicon:
+  ja:
+    Remove old profile data files: 古いプロファイリングデータを削除
+
 config_settings:
   PerformanceProfilerProfilers:
     default: KYTProf
@@ -20,3 +24,9 @@ callbacks:
   MT::App::CMS::init_app: $PerformanceProfiler::MT::Plugin::PerformanceProfiler::init_app
   build_file_filter: $PerformanceProfiler::MT::Plugin::PerformanceProfiler::build_file_filter
   build_page: $PerformanceProfiler::MT::Plugin::PerformanceProfiler::build_page
+
+tasks:
+  PerformanceProfilerRemoveOldFiles:
+    label: 'Remove old profile data files'
+    frequency: 60
+    code: $PerformanceProfiler::MT::Plugin::PerformanceProfiler::remove_old_files

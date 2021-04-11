@@ -9,6 +9,7 @@ use Test::Deep;
 use File::Spec;
 use File::Temp qw( tempdir );
 use MT::Test::Env;
+use MT::Plugin::PerformanceProfiler;
 
 our $test_env;
 our $profiler_path;
@@ -69,6 +70,7 @@ my @profiles_for_index_ctimes = map { ( stat($_) )[10] } @profiles_for_index;
 is scalar(@profiles_for_index), 6;
 
 MT->instance->rebuild( Blog => $blog1 );
+MT::Plugin::PerformanceProfiler::remove_old_files;
 my @profiles_for_all = glob( File::Spec->catfile( $profiler_path, '*' ) );
 is scalar(@profiles_for_all), 10;
 cmp_deeply( [ map { ( stat($_) )[10] } @profiles_for_all ],

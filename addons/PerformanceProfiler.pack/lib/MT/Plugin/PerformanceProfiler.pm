@@ -110,16 +110,21 @@ sub remove_old_files {
         push @{ $files{$profiler} }, $f;
     }
 
+    my $removed = 0;
     for my $profiler ( keys %files ) {
         next if scalar( @{ $files{$profiler} } ) <= $max_files;
+
+        $removed = 1;
 
         my @files = map { $_->[1] }
             sort { $b->[0] <=> $a->[0] }
             map  { [ ( stat($_) )[10] => $_ ] } @{ $files{$profiler} };
-        for my $f ( @files[ $max_files - 1 .. $#files ] ) {
+        for my $f ( @files[ $max_files .. $#files ] ) {
             unlink $f;
         }
     }
+
+    return $removed;
 }
 
 sub init_app {
@@ -169,7 +174,6 @@ sub _build_file_filter {
 
     my $filename = sha1_hex( $param{File} );
 
-    remove_old_files();
     enable_profile(
         File::Spec->catfile( $dir, FILE_PREFIX . '%s-' . $filename ),
         {   version         => $MT::VERSION,
