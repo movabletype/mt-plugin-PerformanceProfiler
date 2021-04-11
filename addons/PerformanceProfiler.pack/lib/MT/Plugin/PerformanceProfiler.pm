@@ -6,8 +6,10 @@ use warnings;
 use utf8;
 
 use Digest::SHA1 qw(sha1_hex);
-use File::Spec;
+use File::Copy qw(move);
 use File::Basename qw(basename);
+use File::Spec;
+use File::Temp;
 use JSON;
 use Time::HiRes qw(gettimeofday tv_interval);
 use MT::Plugin::PerformanceProfiler::KYTProfLogger;
@@ -15,7 +17,7 @@ use MT::Plugin::PerformanceProfiler::Guard;
 
 use constant FILE_PREFIX => 'b-';
 
-our ( $current_file, $current_metadata, $current_start );
+our ( $current_tmp, $current_file, $current_metadata, $current_start );
 our ( $freq, $counter );
 our (%profilers);
 
@@ -30,9 +32,24 @@ sub enabled {
     return !!path();
 }
 
+sub tmp_file_name {
+    my $key = shift;
+    File::Spec->catfile( $current_tmp, sprintf( $current_file, $key ) ),;
+}
+
+sub rename_tmp_file_to_out_file {
+    my $key = shift;
+    my $tmp = tmp_file_name($key);
+    my $out = File::Spec->catfile( path(), sprintf( $current_file, $key ) );
+    move( $tmp, $out )
+        or unlink $tmp;
+}
+
 sub enable_profile {
     my ( $file, $metadata ) = @_;
 
+    state $mt_temp_dir = MT->config->TempDir;
+    $current_tmp      = File::Temp->newdir( DIR => $mt_temp_dir );
     $current_file     = $file;
     $current_metadata = $metadata;
     $current_start    = [gettimeofday];
@@ -43,14 +60,13 @@ sub enable_profile {
         Devel::KYTProf::Profiler::DBI->apply;
         Devel::KYTProf->logger(
             MT::Plugin::PerformanceProfiler::KYTProfLogger->new(
-                sprintf( $file, 'kyt' ),
-                $json_encoder
+                tmp_file_name('kyt'), $json_encoder
             )
         );
     }
 
     if ( $profilers{NYTProf} ) {
-        DB::enable_profile( sprintf( $file, 'nyt' ) );
+        DB::enable_profile( tmp_file_name('nyt') );
     }
 }
 
@@ -66,22 +82,42 @@ sub finish_profile_kytprof {
 }
 
 sub finish_profile {
+    my ($opts) = @_;
+    $opts ||= {};
+
     return unless $current_file;
 
     $current_metadata->{runtime} = tv_interval($current_start);
 
     if ( $profilers{NYTProf} ) {
         DB::finish_profile();
-        my $file = sprintf( $current_file, 'nyt' );
-        open my $fh, '>>', $file;
-        print {$fh} '# ' . $json_encoder->encode($current_metadata) . "\n";
+
+        if ( !$opts->{cancel} ) {
+
+            # append meta data
+            my $file = tmp_file_name('nyt');
+            open my $fh, '>>', $file;
+            print {$fh} '# ' . $json_encoder->encode($current_metadata) . "\n";
+            close $fh;
+
+            rename_tmp_file_to_out_file('nyt');
+        }
     }
 
     if ( $profilers{KYTProf} ) {
         finish_profile_kytprof();
-        Devel::KYTProf->logger->print( $json_encoder->encode($current_metadata) . "\n" );
+
+        if ( !$opts->{cancel} ) {
+
+            # append meta data
+            Devel::KYTProf->logger->print( $json_encoder->encode($current_metadata) . "\n" );
+            Devel::KYTProf->logger(undef);    # release current logger in order to close file handle
+
+            rename_tmp_file_to_out_file('kyt');
+        }
     }
 
+    undef $current_tmp;
     undef $current_file;
 }
 
@@ -89,7 +125,7 @@ sub cancel_profile {
     my $file = $current_file
         or return;
 
-    finish_profile;
+    finish_profile( { cancel => 1 } );
 
     unlink sprintf( $file, 'nyt' ) if $profilers{NYTProf};
     unlink sprintf( $file, 'kyt' ) if $profilers{KYTProf};
@@ -149,15 +185,12 @@ sub init_app {
 sub _build_file_filter {
     my ( $cb, %param ) = @_;
 
-    my $dir = path()
-        or return;
+    return unless enabled();
 
     if ( $freq > 1 ) {
         $counter = ( $counter + 1 ) % $freq;
         return unless $counter == 0;
     }
-
-    return unless -d $dir;
 
     $param{context}->stash( 'performance_profiler_guard',
         MT::Plugin::PerformanceProfiler::Guard->new( \&cancel_profile ) );
@@ -166,7 +199,7 @@ sub _build_file_filter {
 
     remove_old_files();
     enable_profile(
-        File::Spec->catfile( $dir, FILE_PREFIX . '%s-' . $filename ),
+        FILE_PREFIX . '%s-' . $filename,
         {   version         => $MT::VERSION,
             product_version => $MT::PRODUCT_VERSION,
             file            => $param{File},
