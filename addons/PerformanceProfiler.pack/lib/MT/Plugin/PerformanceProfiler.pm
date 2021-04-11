@@ -111,6 +111,8 @@ sub remove_old_files {
     }
 
     for my $profiler ( keys %files ) {
+        next if scalar( @{ $files{$profiler} } ) <= $max_files;
+
         my @files = map { $_->[1] }
             sort { $b->[0] <=> $a->[0] }
             map  { [ ( stat($_) )[10] => $_ ] } @{ $files{$profiler} };
