@@ -4,18 +4,24 @@ use strict;
 use warnings;
 use utf8;
 
+use boolean qw(true false);
 use IO::File;
 use IO::Compress::Gzip;
 use Digest::SHA1 qw(sha1_hex);
 
 sub new {
     my $class = shift;
-    my ( $file_name, $compress, $encoder ) = @{ $_[0] }{qw(file_name compress encoder)};
+    my ( $file_name, $compress, $encoder, $max_file_size )
+        = @{ $_[0] }{qw(file_name compress encoder max_file_size)};
     my $io
         = $compress
         ? IO::Compress::Gzip->new( $file_name, '-Level' => $compress )
         : IO::File->new( $file_name, 'w' );
-    my $self = { io => $io, encoder => $encoder };
+    my $self = {
+        io              => $io,
+        encoder         => $encoder,
+        bytes_available => $max_file_size || undef,
+    };
     bless $self, $class;
     $self;
 }
@@ -30,23 +36,36 @@ sub log {
     my $self = shift;
     my %args = @_;
 
+    return if defined( $self->{bytes_available} ) && $self->{bytes_available} < 0;
+
     my @binds = map { $_ =~ m{\A(?:[0-9]+|undef)?\z} ? $_ : substr( sha1_hex($_), 0, 8 ); }
         split( /, /, ( $args{data}{sql_binds} =~ m{\A\(bind: (.*)\)\z} )[0] );
 
-    $self->print(
-        $self->{encoder}->encode(
-            {   runtime          => $args{time},
-                operation_class  => $args{module},
-                operation_method => $args{method},
-                caller_package   => $args{package},
-                caller_file_name => $args{file},
-                caller_line      => $args{line},
-                sql              => $args{data}{sql},
-                sql_binds        => \@binds,
-            }
-            )
-            . "\n"
-    );
+    my $str = $self->{encoder}->encode(
+        {   runtime   => $args{time},
+            class     => $args{module},
+            method    => $args{method},
+            package   => $args{package},
+            file_name => $args{file},
+            line      => $args{line},
+            sql       => $args{data}{sql},
+            binds     => \@binds,
+        }
+    ) . "\n";
+
+    $self->{bytes_available} -= length($str) if defined( $self->{bytes_available} );
+    $self->print($str);
+}
+
+sub finish {
+    my $self = shift;
+    my ($meta) = @_;
+    $meta ||= {};
+
+    local $meta->{truncated} = $self->{bytes_available} < 0 ? true : false;
+    $self->print( $self->{encoder}->encode($meta) . "\n" );
+
+    $self->{io}->close;
 }
 
 1;

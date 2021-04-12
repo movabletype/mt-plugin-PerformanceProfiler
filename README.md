@@ -52,6 +52,13 @@ If the number of saved files exceeds this number, the oldest one will be deleted
 
 The default value is "1000".
 
+### PerformanceProfilerMaxFileSize:
+
+Maximum file size to save.
+Note: This limitation only works for KYTProf.
+
+The default value is "1048576" (1MB).
+
 ### PerformanceProfilerCompress
 
 The compression level used by zlib.

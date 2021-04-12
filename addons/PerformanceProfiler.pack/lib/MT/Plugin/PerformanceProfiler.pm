@@ -19,7 +19,7 @@ our ( $current_file, $current_metadata, $current_start );
 our ( $freq, $counter );
 our (%profilers);
 
-our $json_encoder = JSON->new->utf8;
+our $json_encoder = JSON->new->utf8->convert_blessed;
 
 sub path {
     state $path = MT->config->PerformanceProfilerPath;
@@ -37,6 +37,8 @@ sub enable_profile {
     $current_metadata = $metadata;
     $current_start    = [gettimeofday];
 
+    state $max_file_size = MT->config->PerformanceProfilerMaxFileSize;
+
     if ( $profilers{KYTProf} ) {
         state $compress = MT->config->PerformanceProfilerCompress;
 
@@ -44,9 +46,10 @@ sub enable_profile {
         Devel::KYTProf::Profiler::DBI->apply;
         Devel::KYTProf->logger(
             MT::Plugin::PerformanceProfiler::KYTProfLogger->new(
-                {   file_name => sprintf( $file, 'kyt' ),
-                    compress  => $compress,
-                    encoder   => $json_encoder,
+                {   file_name     => sprintf( $file, 'kyt' ),
+                    compress      => $compress,
+                    encoder       => $json_encoder,
+                    max_file_size => $max_file_size,
                 }
             )
         );
@@ -82,7 +85,7 @@ sub finish_profile {
 
     if ( $profilers{KYTProf} ) {
         finish_profile_kytprof();
-        Devel::KYTProf->logger->print( $json_encoder->encode($current_metadata) . "\n" );
+        Devel::KYTProf->logger->finish($current_metadata);
     }
 
     undef $current_file;
