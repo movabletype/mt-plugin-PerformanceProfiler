@@ -6,7 +6,6 @@ use Cwd;
 use lib Cwd::realpath("./t/lib"), "$FindBin::Bin/lib";
 use JSON;
 use Test::More;
-use Test::Deep;
 use File::Spec;
 use File::Temp qw( tempdir );
 use MT::Test::Env;
@@ -17,10 +16,11 @@ our $profiler_path;
 BEGIN {
     $profiler_path = tempdir( CLEANUP => 1 );
     $test_env      = MT::Test::Env->new(
-        PerformanceProfilerPath      => $profiler_path,
-        PerformanceProfilerFrequency => 1,
-        PerformanceProfilerMaxFiles  => 10,
-        PluginPath                   => [ Cwd::realpath("$FindBin::Bin/../../../addons") ],
+        PerformanceProfilerCompress    => 0,
+        PerformanceProfilerPath        => $profiler_path,
+        PerformanceProfilerFrequency   => 1,
+        PerformanceProfilerMaxFileSize => 512, # 512 bytes
+        PluginPath                     => [ Cwd::realpath("$FindBin::Bin/../../../addons") ],
     );
 
     $ENV{MT_APP}    = 'MT::App::CMS';
@@ -41,13 +41,13 @@ my $blog1_name = 'PerformanceProfiler-' . time();
 my $super      = 'super';
 
 my $objs = MT::Test::Fixture->prepare(
-    {   author  => [ { 'name' => $super }, ],
+    {   author => [ { 'name' => $super }, ],
         website => [
             {   name     => $blog1_name,
                 site_url => 'http://example.com/blog/',
             },
         ],
-        entry => [
+        entry  => [
             map {
                 my $name = 'PerformanceProfilerEntry-' . $_ . time();
                 +{  basename    => $name,
@@ -63,28 +63,19 @@ my $objs = MT::Test::Fixture->prepare(
 
 my $blog1 = MT->model('website')->load( { name => $blog1_name } ) or die;
 
-MT->instance->rebuild_indexes( Blog => $blog1 );
-my @profiles_for_index        = glob( File::Spec->catfile( $profiler_path, '*' ) );
-my @profiles_for_index_ctimes = map { ( stat($_) )[10] } @profiles_for_index;
-is scalar(@profiles_for_index), 6;
-
 MT->instance->rebuild( Blog => $blog1 );
-my @profiles_for_all = glob( File::Spec->catfile( $profiler_path, '*' ) );
-is scalar(@profiles_for_all), 10;
-cmp_deeply( [ map { ( stat($_) )[10] } @profiles_for_all ],
-    noneof(@profiles_for_index_ctimes), 'removed' );
+my @files = glob( File::Spec->catfile( $profiler_path, '*' ) );
+my ($file) = sort { (stat($b))[7] <=> (stat($a))[7] } @files;
+
+ok((stat($file))[7] < 1024);
 
 my $footer = MT::Util::from_json(
     do {
-        open my $fh, '<', $profiles_for_all[0];
+        open my $fh, '<', $file;
         my @lines = <$fh>;
         $lines[-1];
     }
 );
-ok $footer->{archive_type};
-ok $footer->{runtime};
-is $footer->{product_version}, $MT::PRODUCT_VERSION;
-is $footer->{version},         $MT::VERSION;
-is $footer->{truncated},       $JSON::false;
+is $footer->{truncated}, $JSON::true;
 
 done_testing;

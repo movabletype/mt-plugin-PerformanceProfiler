@@ -54,13 +54,19 @@ sub enable_profile {
     $current_metadata = $metadata;
     $current_start    = [gettimeofday];
 
+    state $max_file_size = MT->config->PerformanceProfilerMaxFileSize;
+
     if ( $profilers{KYTProf} ) {
 
         # XXX: force re-initialize $Devel::KYTProf::Profiler::DBI::_TRACER
         Devel::KYTProf::Profiler::DBI->apply;
         Devel::KYTProf->logger(
             MT::Plugin::PerformanceProfiler::KYTProfLogger->new(
-                tmp_file_name('kyt'), $json_encoder
+                {   file_name                  => tmp_file_name('kyt'),
+                    encoder                    => $json_encoder,
+                    max_file_size              => $max_file_size,
+                    exceeded_file_size_handler => \&finish_profile_kytprof,
+                }
             )
         );
     }
@@ -106,7 +112,6 @@ sub finish_profile {
 
     if ( $profilers{KYTProf} ) {
         finish_profile_kytprof();
-
         if ( !$opts->{cancel} ) {
 
             # append meta data
