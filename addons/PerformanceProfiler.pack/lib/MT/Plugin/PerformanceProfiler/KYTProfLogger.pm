@@ -38,17 +38,7 @@ sub log {
 
     return if defined( $self->{bytes_available} ) && $self->{bytes_available} < 0;
 
-    my @binds = map { $_ =~ m{\A(?:[0-9]+|undef)?\z} ? $_ : substr( sha1_hex($_), 0, 8 ); }
-        split( /, /, ( $args{data}{sql_binds} =~ m{\A\(bind: (.*)\)\z} )[0] );
-
-    my $str = $self->{encoder}->encode(
-        {   runtime   => $args{time},
-            package   => $args{package},
-            line      => $args{line},
-            sql       => $args{data}{sql},
-            binds     => \@binds,
-        }
-    ) . "\n";
+    my $str = join( "\t", $args{time}, $args{package}, $args{line}, $args{data}{sql} ) . "\n";
 
     $self->{bytes_available} -= length($str) if defined( $self->{bytes_available} );
     $self->print($str);
@@ -60,7 +50,7 @@ sub finish {
     $meta ||= {};
 
     local $meta->{truncated} = $self->{bytes_available} < 0 ? $JSON::true : $JSON::false;
-    $self->print( $self->{encoder}->encode($meta) . "\n" );
+    $self->print( '# ' . $self->{encoder}->encode($meta) . "\n" );
 
     $self->{io}->close;
 }
