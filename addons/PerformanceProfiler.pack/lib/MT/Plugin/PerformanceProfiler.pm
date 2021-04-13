@@ -19,7 +19,7 @@ our ( $current_file, $current_metadata, $current_start );
 our ( $freq, $counter );
 our (%profilers);
 
-our $json_encoder = JSON->new->utf8->convert_blessed;
+our $json_encoder = JSON->new->utf8;
 
 sub path {
     state $path = MT->config->PerformanceProfilerPath;

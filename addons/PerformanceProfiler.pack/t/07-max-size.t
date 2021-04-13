@@ -4,7 +4,7 @@ use FindBin;
 use Cwd;
 
 use lib Cwd::realpath("./t/lib"), "$FindBin::Bin/lib";
-use boolean;
+use JSON;
 use Test::More;
 use File::Spec;
 use File::Temp qw( tempdir );
@@ -76,6 +76,6 @@ my $footer = MT::Util::from_json(
         $lines[-1];
     }
 );
-is $footer->{truncated}, true;
+is $footer->{truncated}, $JSON::true;
 
 done_testing;

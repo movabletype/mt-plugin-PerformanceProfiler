@@ -4,8 +4,8 @@ use FindBin;
 use Cwd;
 
 use lib Cwd::realpath("./t/lib"), "$FindBin::Bin/lib";
-use boolean;
 use IO::Uncompress::Gunzip;
+use JSON;
 use Test::More;
 use Test::Deep;
 use File::Spec;
@@ -86,6 +86,6 @@ ok $footer->{archive_type};
 ok $footer->{runtime};
 is $footer->{product_version}, $MT::PRODUCT_VERSION;
 is $footer->{version},         $MT::VERSION;
-is $footer->{truncated},       false;
+is $footer->{truncated},       $JSON::false;
 
 done_testing;

@@ -4,9 +4,9 @@ use strict;
 use warnings;
 use utf8;
 
-use boolean qw(true false);
 use IO::File;
 use IO::Compress::Gzip;
+use JSON;
 use Digest::SHA1 qw(sha1_hex);
 
 sub new {
@@ -59,7 +59,7 @@ sub finish {
     my ($meta) = @_;
     $meta ||= {};
 
-    local $meta->{truncated} = $self->{bytes_available} < 0 ? true : false;
+    local $meta->{truncated} = $self->{bytes_available} < 0 ? $JSON::true : $JSON::false;
     $self->print( $self->{encoder}->encode($meta) . "\n" );
 
     $self->{io}->close;
