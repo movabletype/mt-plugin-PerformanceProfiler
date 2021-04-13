@@ -71,8 +71,6 @@ is scalar(@profiles_for_index), 6;
 MT->instance->rebuild( Blog => $blog1 );
 my @profiles_for_all = glob( File::Spec->catfile( $profiler_path, '*' ) );
 is scalar(@profiles_for_all), 10;
-cmp_deeply( [ map { ( stat($_) )[10] } @profiles_for_all ],
-    noneof(@profiles_for_index_ctimes), 'removed' );
 
 my $footer = MT::Util::from_json(
     do {

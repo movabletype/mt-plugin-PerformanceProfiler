@@ -136,9 +136,9 @@ sub cancel_profile {
     unlink sprintf( $file, 'kyt' ) if $profilers{KYTProf};
 }
 
-sub remove_old_files {
+sub can_create_profile {
     my $max_files = MT->config->PerformanceProfilerMaxFiles
-        or return;    # unlimited
+        or return 1;    # unlimited, can create
 
     my %files = ();
     for my $f ( grep { -f $_ } glob( File::Spec->catfile( path(), FILE_PREFIX . '*' ) ) ) {
@@ -149,13 +149,10 @@ sub remove_old_files {
     }
 
     for my $profiler ( keys %files ) {
-        my @files = map { $_->[1] }
-            sort { $b->[0] <=> $a->[0] }
-            map  { [ ( stat($_) )[10] => $_ ] } @{ $files{$profiler} };
-        for my $f ( @files[ $max_files - 1 .. $#files ] ) {
-            unlink $f;
-        }
+        return 0 if @{ $files{$profiler} } >= $max_files;    # reached to max files
     }
+
+    return 1;
 }
 
 sub init_app {
@@ -197,12 +194,13 @@ sub _build_file_filter {
         return unless $counter == 0;
     }
 
+    return unless can_create_profile();
+
     $param{context}->stash( 'performance_profiler_guard',
         MT::Plugin::PerformanceProfiler::Guard->new( \&cancel_profile ) );
 
     my $filename = sha1_hex( $param{File} );
 
-    remove_old_files();
     enable_profile(
         FILE_PREFIX . '%s-' . $filename,
         {   version         => $MT::VERSION,
