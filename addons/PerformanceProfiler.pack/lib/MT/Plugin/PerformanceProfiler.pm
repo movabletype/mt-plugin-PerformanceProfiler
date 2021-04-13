@@ -46,10 +46,11 @@ sub enable_profile {
         Devel::KYTProf::Profiler::DBI->apply;
         Devel::KYTProf->logger(
             MT::Plugin::PerformanceProfiler::KYTProfLogger->new(
-                {   file_name     => sprintf( $file, 'kyt' ),
-                    compress      => $compress,
-                    encoder       => $json_encoder,
-                    max_file_size => $max_file_size,
+                {   file_name                  => sprintf( $file, 'kyt' ),
+                    compress                   => $compress,
+                    encoder                    => $json_encoder,
+                    max_file_size              => $max_file_size,
+                    exceeded_file_size_handler => \&finish_profile_kytprof,
                 }
             )
         );
