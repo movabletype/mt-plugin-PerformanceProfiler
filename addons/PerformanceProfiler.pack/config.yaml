@@ -14,7 +14,7 @@ config_settings:
   PerformanceProfilerMaxFiles:
     default: 1000
   PerformanceProfilerCompress:
-    default: 1
+    default: 0
 
 callbacks:
   MT::App::CMS::init_app: $PerformanceProfiler::MT::Plugin::PerformanceProfiler::init_app

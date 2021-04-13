@@ -57,7 +57,7 @@ The default value is "1000".
 The compression level used by zlib.
 The value should either be a number between 0 and 9 (0 means no compression and 9 is maximum compression).
 
-The default value is "1" (means best speed).
+The default value is "0" (disabled).
 
 ## Requirements
 
