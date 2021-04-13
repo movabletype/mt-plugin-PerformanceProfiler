@@ -28,5 +28,5 @@ callbacks:
 tasks:
   PerformanceProfilerRemoveOldFiles:
     label: 'Remove old profile data files'
-    frequency: 60
+    frequency: 600
     code: $PerformanceProfiler::MT::Plugin::PerformanceProfiler::remove_old_files
