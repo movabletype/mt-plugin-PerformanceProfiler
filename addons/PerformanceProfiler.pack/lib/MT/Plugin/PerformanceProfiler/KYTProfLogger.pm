@@ -31,20 +31,7 @@ sub log {
     my $self = shift;
     my %args = @_;
 
-    my @binds = map { $_ =~ m{\A(?:[0-9]+|undef)?\z} ? $_ : substr( sha1_hex($_), 0, 8 ); }
-        split( /, /, ( $args{data}{sql_binds} =~ m{\A\(bind: (.*)\)\z} )[0] );
-
-    my $str = $self->{encoder}->encode(
-        {   runtime   => $args{time},
-            class     => $args{module},
-            method    => $args{method},
-            package   => $args{package},
-            file_name => $args{file},
-            line      => $args{line},
-            sql       => $args{data}{sql},
-            binds     => \@binds,
-        }
-    ) . "\n";
+    my $str = join( "\t", $args{time}, $args{package}, $args{line}, $args{data}{sql} ) . "\n";
 
     $self->{bytes_available} -= length($str) if defined( $self->{bytes_available} );
     if ( defined( $self->{bytes_available} ) && $self->{bytes_available} < 0 ) {
