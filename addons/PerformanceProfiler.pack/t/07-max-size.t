@@ -64,7 +64,7 @@ my $objs = MT::Test::Fixture->prepare(
 my $blog1 = MT->model('website')->load( { name => $blog1_name } ) or die;
 
 MT->instance->rebuild( Blog => $blog1 );
-my @files = glob( File::Spec->catfile( $profiler_path, '*' ) );
+my @files = glob( File::Spec->catfile( $profiler_path, 'b-kyt_builds*' ) );
 my ($file) = sort { (stat($b))[7] <=> (stat($a))[7] } @files;
 
 ok((stat($file))[7] < 1024);

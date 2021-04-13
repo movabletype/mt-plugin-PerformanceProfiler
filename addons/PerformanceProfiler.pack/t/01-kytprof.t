@@ -66,11 +66,11 @@ my $blog1 = MT->model('website')->load( { name => $blog1_name } ) or die;
 MT->instance->rebuild_indexes( Blog => $blog1 );
 my @profiles_for_index        = glob( File::Spec->catfile( $profiler_path, '*' ) );
 my @profiles_for_index_ctimes = map { ( stat($_) )[10] } @profiles_for_index;
-is scalar(@profiles_for_index), 6;
+is scalar(@profiles_for_index), 12;
 
 MT->instance->rebuild( Blog => $blog1 );
 my @profiles_for_all = glob( File::Spec->catfile( $profiler_path, '*' ) );
-is scalar(@profiles_for_all), 10;
+is scalar(@profiles_for_all), 20;
 
 my $footer = MT::Util::from_json(
     do {

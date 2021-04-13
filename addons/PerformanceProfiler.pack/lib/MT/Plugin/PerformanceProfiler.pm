@@ -11,7 +11,9 @@ use File::Basename qw(basename);
 use File::Spec;
 use File::Temp;
 use JSON;
+use Sys::Hostname q();
 use Time::HiRes qw(gettimeofday tv_interval);
+use MT::Util::UniqueID;
 use MT::Plugin::PerformanceProfiler::KYTProfLogger;
 use MT::Plugin::PerformanceProfiler::Guard;
 
@@ -48,6 +50,9 @@ sub rename_tmp_file_to_out_file {
 sub enable_profile {
     my ( $file, $metadata ) = @_;
 
+    $metadata->{id}          = MT::Util::UniqueID::create_sha1_id();
+    $metadata->{instance_id} = Sys::Hostname::hostname;
+
     state $mt_temp_dir = MT->config->TempDir;
     $current_tmp      = File::Temp->newdir( DIR => $mt_temp_dir );
     $current_file     = $file;
@@ -62,8 +67,7 @@ sub enable_profile {
         Devel::KYTProf::Profiler::DBI->apply;
         Devel::KYTProf->logger(
             MT::Plugin::PerformanceProfiler::KYTProfLogger->new(
-                {   file_name                  => tmp_file_name('kyt'),
-                    encoder                    => $json_encoder,
+                {   file_name                  => tmp_file_name('kyt_logs'),
                     max_file_size              => $max_file_size,
                     exceeded_file_size_handler => \&finish_profile_kytprof,
                 }
@@ -113,12 +117,19 @@ sub finish_profile {
     if ( $profilers{KYTProf} ) {
         finish_profile_kytprof();
         if ( !$opts->{cancel} ) {
+            $current_metadata->{truncated}
+                = Devel::KYTProf->logger->is_truncated
+                ? $JSON::true
+                : $JSON::false;
+            my $file = tmp_file_name('kyt_builds');
+            open my $fh, '>', $file;
+            print {$fh} $json_encoder->encode($current_metadata);
+            close $fh;
+            rename_tmp_file_to_out_file('kyt_builds');
 
-            # append meta data
-            Devel::KYTProf->logger->print( $json_encoder->encode($current_metadata) . "\n" );
             Devel::KYTProf->logger(undef);    # release current logger in order to close file handle
+            rename_tmp_file_to_out_file('kyt_logs');
 
-            rename_tmp_file_to_out_file('kyt');
         }
     }
 
@@ -143,7 +154,7 @@ sub can_create_profile {
     my %files = ();
     for my $f ( grep { -f $_ } glob( File::Spec->catfile( path(), FILE_PREFIX . '*' ) ) ) {
         my $bn = basename($f);
-        my ($profiler) = $bn =~ m/@{[FILE_PREFIX()]}([a-zA-Z]+)/;
+        my ($profiler) = $bn =~ m/@{[FILE_PREFIX()]}([a-zA-Z_]+)/;
         $files{$profiler} ||= [];
         push @{ $files{$profiler} }, $f;
     }
