@@ -43,10 +43,7 @@ sub log {
 
     my $str = $self->{encoder}->encode(
         {   runtime   => $args{time},
-            class     => $args{module},
-            method    => $args{method},
             package   => $args{package},
-            file_name => $args{file},
             line      => $args{line},
             sql       => $args{data}{sql},
             binds     => \@binds,
