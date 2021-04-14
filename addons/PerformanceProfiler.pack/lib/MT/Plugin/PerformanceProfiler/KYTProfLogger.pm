@@ -28,8 +28,8 @@ sub log {
     my $self = shift;
     my %args = @_;
 
-    $args{data}{sql} =~ s{(?:\n)+}{}g;
     $args{data}{sql} =~ s{(?:\n|\t)+}{ }g;
+    $args{data}{sql} =~ s{\s+$}{};
     my $str = join( "\t", $args{time}, $args{package}, $args{line}, $args{data}{sql} ) . "\n";
 
     $self->{bytes_available} -= length($str) if defined( $self->{bytes_available} );
