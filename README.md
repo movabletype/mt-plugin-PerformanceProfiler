@@ -50,7 +50,7 @@ The default value is "10".
 The number of files to save.
 If the number of saved files exceeds this number, the oldest one will be deleted.
 
-The default value is "1000".
+The default value is "25".
 
 ### PerformanceProfilerMaxFileSize:
 
