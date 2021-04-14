@@ -11,7 +11,7 @@ use File::Basename qw(basename);
 use File::Spec;
 use File::Temp;
 use JSON;
-use Sys::Hostname q();
+use Sys::Hostname qw();
 use Time::HiRes qw(gettimeofday tv_interval);
 use MT::Util::UniqueID;
 use MT::Plugin::PerformanceProfiler::KYTProfLogger;
