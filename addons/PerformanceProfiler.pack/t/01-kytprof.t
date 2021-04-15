@@ -18,7 +18,6 @@ BEGIN {
     $test_env      = MT::Test::Env->new(
         PerformanceProfilerPath      => $profiler_path,
         PerformanceProfilerFrequency => 1,
-        PerformanceProfilerMaxFiles  => 10,
         PluginPath                   => [ Cwd::realpath("$FindBin::Bin/../../../addons") ],
     );
 
@@ -63,26 +62,29 @@ my $objs = MT::Test::Fixture->prepare(
 my $blog1 = MT->model('website')->load( { name => $blog1_name } ) or die;
 
 MT->instance->rebuild_indexes( Blog => $blog1 );
-my @profiles_for_index        = glob( File::Spec->catfile( $profiler_path, '*' ) );
+my @profiles_for_index        = glob( File::Spec->catfile( $profiler_path, '*', '*' ) );
 my @profiles_for_index_ctimes = map { ( stat($_) )[10] } @profiles_for_index;
 is scalar(@profiles_for_index), 6;
 
 MT->instance->rebuild( Blog => $blog1 );
-my @profiles_for_all = glob( File::Spec->catfile( $profiler_path, '*' ) );
-is scalar(@profiles_for_all), 10;
-cmp_deeply( [ map { ( stat($_) )[10] } @profiles_for_all ],
-    noneof(@profiles_for_index_ctimes), 'removed' );
+my @profiles_for_all = glob( File::Spec->catfile( $profiler_path, '*', '*' ) );
+is scalar(@profiles_for_all), 23;
 
-my $footer = MT::Util::from_json(
-    do {
-        open my $fh, '<', $profiles_for_all[0];
-        my @lines = <$fh>;
-        $lines[-1];
-    }
-);
-ok $footer->{archive_type};
-ok $footer->{runtime};
-is $footer->{product_version}, $MT::PRODUCT_VERSION;
-is $footer->{version},         $MT::VERSION;
+my ($data, $meta_json) = do {
+    open my $fh, '<', $profiles_for_all[0];
+    <$fh>;
+};
+
+my $meta = MT::Util::from_json($meta_json);
+ok $meta->{archive_type};
+ok $meta->{runtime};
+is $meta->{product_version}, $MT::PRODUCT_VERSION;
+is $meta->{version},         $MT::VERSION;
+
+my ($version, $runtime, $package_id, $line) = unpack('Cnnn', $data);
+is $version, 1;
+ok $runtime;
+is $package_id, 0; # The first line is always 0
+ok $line;
 
 done_testing;
