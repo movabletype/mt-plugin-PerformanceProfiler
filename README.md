@@ -45,13 +45,6 @@ The frequency of profiling.
 
 The default value is "10".
 
-### PerformanceProfilerMaxFiles:
-
-The number of files to save.
-If the number of saved files exceeds this number, the oldest one will be deleted.
-
-The default value is "1000".
-
 ## Requirements
 
 * Movable Type 7

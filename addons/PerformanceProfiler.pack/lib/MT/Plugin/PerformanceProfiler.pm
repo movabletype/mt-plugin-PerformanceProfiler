@@ -131,28 +131,6 @@ sub cancel_profile {
     unlink sprintf( $file, 'kyt' ) if $profilers{KYTProf};
 }
 
-sub remove_old_files {
-    my $max_files = MT->config->PerformanceProfilerMaxFiles
-        or return;    # unlimited
-
-    my %files = ();
-    for my $f ( grep { -f $_ } glob( File::Spec->catfile( path(), FILE_PREFIX . '*' ) ) ) {
-        my $bn = basename($f);
-        my ($profiler) = $bn =~ m/@{[FILE_PREFIX()]}([a-zA-Z]+)/;
-        $files{$profiler} ||= [];
-        push @{ $files{$profiler} }, $f;
-    }
-
-    for my $profiler ( keys %files ) {
-        my @files = map { $_->[1] }
-            sort { $b->[0] <=> $a->[0] }
-            map  { [ ( stat($_) )[10] => $_ ] } @{ $files{$profiler} };
-        for my $f ( @files[ $max_files - 1 .. $#files ] ) {
-            unlink $f;
-        }
-    }
-}
-
 sub init_app {
     my $dir = path()
         or return;
@@ -197,7 +175,6 @@ sub _build_file_filter {
 
     my $filename = sha1_hex( $param{File} );
 
-    remove_old_files();
     enable_profile(
         FILE_PREFIX . '%s-' . $filename,
         {   version         => $MT::VERSION,
