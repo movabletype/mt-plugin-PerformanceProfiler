@@ -10,7 +10,7 @@ config_settings:
   PerformanceProfilerPath:
     default: ""
   PerformanceProfilerFrequency:
-    default: 10
+    default: auto
   PerformanceProfilerMaxFiles:
     default: 25
   PerformanceProfilerMaxFileSize:

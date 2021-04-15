@@ -39,11 +39,12 @@ The default value is blank.
 
 The frequency of profiling.
 
+* auto : Automatically determined from the number of fileinfo
 * 0 : Disabled
 * 1 : Always recored profile
 * 10 : Record profile once in ten times
 
-The default value is "10".
+The default value is "auto".
 
 ### PerformanceProfilerMaxFiles:
 

@@ -11,13 +11,15 @@ use File::Basename qw(basename);
 use File::Spec;
 use File::Temp;
 use JSON;
+use List::Util qw(max);
 use Sys::Hostname qw();
 use Time::HiRes qw(gettimeofday tv_interval);
 use MT::Util::UniqueID;
 use MT::Plugin::PerformanceProfiler::KYTProfLogger;
 use MT::Plugin::PerformanceProfiler::Guard;
 
-use constant FILE_PREFIX => 'b-';
+use constant FILE_PREFIX        => 'b-';
+use constant FREQUENCY_AUTO_MIN => 10;
 
 our ( $current_tmp, $current_file, $current_metadata, $current_start );
 our ( $freq, $counter );
@@ -172,6 +174,10 @@ sub init_app {
 
     $freq = MT->config->PerformanceProfilerFrequency
         or return;
+    if ( $freq eq 'auto' ) {
+        my $max_files = MT->config->PerformanceProfilerMaxFiles;
+        $freq = max( MT->model('fileinfo')->count / $max_files, FREQUENCY_AUTO_MIN );
+    }
     $counter = int( rand($freq) );
 
     %profilers = map { $_ => 1 }
