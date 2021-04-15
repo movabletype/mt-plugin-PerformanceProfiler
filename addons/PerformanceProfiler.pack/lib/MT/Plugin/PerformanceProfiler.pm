@@ -11,7 +11,9 @@ use File::Basename qw(basename);
 use File::Spec;
 use File::Temp;
 use JSON;
+use Sys::Hostname qw();
 use Time::HiRes qw(gettimeofday tv_interval);
+use MT::Util::UniqueID;
 use MT::Plugin::PerformanceProfiler::KYTProfLogger;
 use MT::Plugin::PerformanceProfiler::Guard;
 
@@ -114,8 +116,7 @@ sub finish_profile {
         if ( !$opts->{cancel} ) {
 
             # append meta data
-            Devel::KYTProf->logger->print( $json_encoder->encode($current_metadata) . "\n" );
-            Devel::KYTProf->logger(undef);    # release current logger in order to close file handle
+            Devel::KYTProf->logger->finish($current_metadata);
 
             rename_tmp_file_to_out_file('kyt');
         }
@@ -177,11 +178,12 @@ sub _build_file_filter {
     $param{context}->stash( 'performance_profiler_guard',
         MT::Plugin::PerformanceProfiler::Guard->new( \&cancel_profile ) );
 
-    my $filename = sha1_hex( $param{File} );
-
+    my $filename = MT::Util::UniqueID::create_sha1_id();
     enable_profile(
         FILE_PREFIX . '%s-' . $filename,
-        {   version         => $MT::VERSION,
+        {   id              => $filename,
+            instance_id     => Sys::Hostname::hostname,
+            version         => $MT::VERSION,
             product_version => $MT::PRODUCT_VERSION,
             file            => sha1_hex( $param{File} ),
             archive_type    => $param{ArchiveType},

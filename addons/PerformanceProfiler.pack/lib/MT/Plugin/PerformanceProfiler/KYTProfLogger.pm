@@ -4,14 +4,13 @@ use strict;
 use warnings;
 use utf8;
 
-use Digest::SHA1 qw(sha1_hex);
-
 sub new {
     my $class = shift;
     my ( $file_name, $encoder ) = @_;
     open my $fh, '>', $file_name;
-    my $self = { fh => $fh, encoder => $encoder };
+    my $self = { fh => $fh, encoder => $encoder, package_map => +{} };
     bless $self, $class;
+    $self->print( pack( 'C', 1 ) );    # version 1
     $self;
 }
 
@@ -21,27 +20,44 @@ sub print {
     print { $self->{fh} } $msg;
 }
 
+sub _package_id {
+    my $self = shift;
+    my ($package) = @_;
+    $self->{package_map}{$package} or do {
+        my $next_id = keys( %{ $self->{package_map} } );
+        $self->{package_map}{$package} = $next_id;
+    };
+}
+
 sub log {
     my $self = shift;
     my %args = @_;
 
-    my @binds = map { $_ =~ m{\A(?:[0-9]+|undef)?\z} ? $_ : substr( sha1_hex($_), 0, 8 ); }
-        split( /, /, ( $args{data}{sql_binds} =~ m{\A\(bind: (.*)\)\z} )[0] );
+    my $time = int( $args{time} * 1000 );    # milliseconds
+    if ( $time > 65535 ) {
 
-    $self->print(
-        $self->{encoder}->encode(
-            {   runtime          => $args{time},
-                operation_class  => $args{module},
-                operation_method => $args{method},
-                caller_package   => $args{package},
-                caller_file_name => $args{file},
-                caller_line      => $args{line},
-                sql              => $args{data}{sql},
-                sql_binds        => \@binds,
-            }
-            )
-            . "\n"
-    );
+        # I thing that a single inquiry does not take more than a minute.
+        $time = 65535;
+    }
+    my $package_id = $self->_package_id( $args{package} );
+
+    $self->print( pack( 'nnn', $time, $package_id, $args{line}, ) );
+}
+
+sub finish {
+    my $self = shift;
+    my ($metadata) = @_;
+
+    $metadata->{packages} = [
+        map      { $_->[1] }
+            sort { $a->[0] <=> $b->[0] }
+            map  { [ $self->{package_map}{$_} => $_ ] }
+            keys %{ $self->{package_map} }
+    ];
+
+    $self->print( "\n" . $self->{encoder}->encode($metadata) . "\n" );
+
+    close $self->{fh};
 }
 
 1;
