@@ -183,7 +183,7 @@ sub _build_file_filter {
         FILE_PREFIX . '%s-' . $filename,
         {   version         => $MT::VERSION,
             product_version => $MT::PRODUCT_VERSION,
-            file            => $param{File},
+            file            => sha1_hex( $param{File} ),
             archive_type    => $param{ArchiveType},
         },
     );
