@@ -40,7 +40,11 @@ sub tmp_file_name {
 sub rename_tmp_file_to_out_file {
     my $key = shift;
     my $tmp = tmp_file_name($key);
-    my $out = File::Spec->catfile( path(), sprintf( $current_file, $key ) );
+
+    my $dir = File::Spec->catfile( path(), sprintf( '%02d', (localtime)[2] ) );    # hour
+    mkdir $dir unless -d $dir;
+
+    my $out = File::Spec->catfile( $dir, sprintf( $current_file, $key ) );
     move( $tmp, $out )
         or unlink $tmp;
 }
