@@ -70,10 +70,32 @@ MT->instance->rebuild( Blog => $blog1 );
 my @profiles_for_all = glob( File::Spec->catfile( $profiler_path, '*', '*' ) );
 is scalar(@profiles_for_all), 23;
 
-my ($data, $meta_json) = do {
-    open my $fh, '<', $profiles_for_all[0];
-    <$fh>;
+my ($file) = @profiles_for_all;
+
+open my $fh, '<', $file;
+
+sysread $fh, my $version_data, 1;
+my $version = unpack('C', $version_data);
+is $version, 1;
+
+{
+    sysread $fh, my $data, 8;
+    my ($runtime, $package_index, $line, $sql_index) = unpack('n4', $data);
+    is $version, 1;
+    ok $runtime;
+    is $package_index, 0; # The first line is always 0
+    ok $line;
+    is $sql_index, 0; # The first line is always 0
 };
+
+while (1) {
+    sysread $fh, my $data, 8;
+    my ($runtime, $package_index, $line, $sql_index) = unpack('n4', $data);
+    last if !$runtime && !$package_index && !$line && !$sql_index;
+}
+
+sysread $fh, my $data, (stat($file))[7];
+my ($meta_json, @sqls) = split /\0/, $data;
 
 my $meta = MT::Util::from_json($meta_json);
 ok $meta->{archive_type};
@@ -81,10 +103,8 @@ ok $meta->{runtime};
 is $meta->{product_version}, $MT::PRODUCT_VERSION;
 is $meta->{version},         $MT::VERSION;
 
-my ($version, $runtime, $package_id, $line) = unpack('Cnnn', $data);
-is $version, 1;
-ok $runtime;
-is $package_id, 0; # The first line is always 0
-ok $line;
+for my $sql (@sqls) {
+    like $sql, qr/^SELECT/i;
+}
 
 done_testing;
