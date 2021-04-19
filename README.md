@@ -49,6 +49,12 @@ The default value is "10".
 
 * Movable Type 7
 
+## Included Perl module
+
+The following modules are included, and the license for each module follows that of itself.
+
+* [Regexp::Trie](https://metacpan.org/pod/Regexp::Trie)
+
 ## LICENSE
 
 MIT License
