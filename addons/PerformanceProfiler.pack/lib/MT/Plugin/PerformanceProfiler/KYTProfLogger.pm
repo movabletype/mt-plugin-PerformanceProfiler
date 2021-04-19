@@ -6,6 +6,8 @@ use utf8;
 
 use constant PACK_RECORD => 'nnnn';
 
+our $terminator = pack( PACK_RECORD, (0) x length(PACK_RECORD) );
+
 sub new {
     my $class = shift;
     my ( $file_name, $encoder ) = @_;
@@ -49,8 +51,8 @@ sub finish {
     my $self = shift;
     my ($metadata) = @_;
 
-    # terminator
-    $self->print( pack( PACK_RECORD, (0) x length(PACK_RECORD) ) );
+    # log records are no longer added
+    $self->print($terminator);
 
     $metadata->{packages} = [
         map      { $_->[1] }
