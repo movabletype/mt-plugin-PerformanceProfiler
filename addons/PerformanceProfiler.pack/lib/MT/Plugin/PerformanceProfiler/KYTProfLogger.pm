@@ -29,12 +29,6 @@ sub print {
     print { $self->{fh} } $msg;
 }
 
-sub _index {
-    my $self = shift;
-    my ( $type, $package ) = @_;
-    $self->{ $type . '_map' }{$package} ||= $self->{ $type . '_index' }++;
-}
-
 sub log {
     my $self = shift;
     my %args = @_;
@@ -45,8 +39,8 @@ sub log {
         # I thing that a single inquiry does not take more than a minute.
         $time = 65535;
     }
-    my $package_index = $self->_index( 'package', $args{package} );
-    my $sql_index     = $self->_index( 'sql',     $args{data}{sql} );
+    my $package_index = $self->{package_map}{ $args{package} } ||= $self->{package_index}++;
+    my $sql_index     = $self->{sql_map}{ $args{data}{sql} }   ||= $self->{sql_index}++;
 
     $self->print( pack( PACK_RECORD, $time, $package_index, $args{line}, $sql_index ) );
 }
