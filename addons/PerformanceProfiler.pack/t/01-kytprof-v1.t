@@ -10,6 +10,8 @@ use File::Spec;
 use File::Temp qw( tempdir );
 use MT::Test::Env;
 
+use_ok 'MT::Plugin::PerformanceProfiler::KYTProfLogger::v1';
+
 our $test_env;
 our $profiler_path;
 
@@ -78,9 +80,13 @@ sysread $fh, my $version_data, 1;
 my $version = unpack('C', $version_data);
 is $version, 1;
 
+my $unpack_record = MT::Plugin::PerformanceProfiler::KYTProfLogger::v1::PACK_RECORD();
+my $terminator = $MT::Plugin::PerformanceProfiler::KYTProfLogger::v1::terminator;
+my $record_size = length($terminator);
+
 {
-    sysread $fh, my $data, 8;
-    my ($runtime, $package_index, $line, $sql_index) = unpack('n4', $data);
+    sysread($fh, my $data, $record_size);
+    my ($runtime, $package_index, $line, $sql_index) = unpack($unpack_record, $data);
     is $version, 1;
     ok $runtime;
     is $package_index, 0; # The first line is always 0
@@ -89,12 +95,12 @@ is $version, 1;
 };
 
 while (1) {
-    sysread $fh, my $data, 8;
-    my ($runtime, $package_index, $line, $sql_index) = unpack('n4', $data);
-    last if !$runtime && !$package_index && !$line && !$sql_index;
+    sysread($fh, my $data, $record_size)
+        or die 'unexpected EOF';
+    last if $data eq $terminator;
 }
 
-sysread $fh, my $data, (stat($file))[7];
+sysread($fh, my $data, (stat($file))[7]);
 my ($meta_json, @sqls) = split /\0/, $data;
 
 my $meta = MT::Util::from_json($meta_json);

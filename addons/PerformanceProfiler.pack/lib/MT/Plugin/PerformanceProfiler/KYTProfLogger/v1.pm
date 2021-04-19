@@ -1,4 +1,4 @@
-package MT::Plugin::PerformanceProfiler::KYTProfLogger;
+package MT::Plugin::PerformanceProfiler::KYTProfLogger::v1;
 
 use strict;
 use warnings;
@@ -10,7 +10,8 @@ our $terminator = pack( PACK_RECORD, (0) x length(PACK_RECORD) );
 
 sub new {
     my $class = shift;
-    my ( $file_name, $encoder ) = @_;
+    my ($opts) = @_;
+    my ( $file_name, $encoder ) = @$opts{qw(file_name encoder)};
     open my $fh, '>', $file_name;
     my $self = {
         fh            => $fh,
