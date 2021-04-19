@@ -4,11 +4,20 @@ use strict;
 use warnings;
 use utf8;
 
+use constant PACK_RECORD => 'nnnn';
+
 sub new {
     my $class = shift;
     my ( $file_name, $encoder ) = @_;
     open my $fh, '>', $file_name;
-    my $self = { fh => $fh, encoder => $encoder, package_map => +{} };
+    my $self = {
+        fh            => $fh,
+        encoder       => $encoder,
+        package_map   => +{},
+        package_index => 0,
+        sql_map       => +{},
+        sql_index     => 0,
+    };
     bless $self, $class;
     $self->print( pack( 'C', 1 ) );    # version 1
     $self;
@@ -20,13 +29,10 @@ sub print {
     print { $self->{fh} } $msg;
 }
 
-sub _package_id {
+sub _index {
     my $self = shift;
-    my ($package) = @_;
-    $self->{package_map}{$package} or do {
-        my $next_id = keys( %{ $self->{package_map} } );
-        $self->{package_map}{$package} = $next_id;
-    };
+    my ( $type, $package ) = @_;
+    $self->{ $type . '_map' }{$package} ||= $self->{ $type . '_index' }++;
 }
 
 sub log {
@@ -39,14 +45,18 @@ sub log {
         # I thing that a single inquiry does not take more than a minute.
         $time = 65535;
     }
-    my $package_id = $self->_package_id( $args{package} );
+    my $package_index = $self->_index( 'package', $args{package} );
+    my $sql_index     = $self->_index( 'sql',     $args{data}{sql} );
 
-    $self->print( pack( 'nnn', $time, $package_id, $args{line}, ) );
+    $self->print( pack( PACK_RECORD, $time, $package_index, $args{line}, $sql_index ) );
 }
 
 sub finish {
     my $self = shift;
     my ($metadata) = @_;
+
+    # terminator
+    $self->print( pack( PACK_RECORD, (0) x length(PACK_RECORD) ) );
 
     $metadata->{packages} = [
         map      { $_->[1] }
@@ -54,8 +64,15 @@ sub finish {
             map  { [ $self->{package_map}{$_} => $_ ] }
             keys %{ $self->{package_map} }
     ];
+    $self->print( $self->{encoder}->encode($metadata) . "\0" );
 
-    $self->print( "\n" . $self->{encoder}->encode($metadata) . "\n" );
+    my @sqls = map { $_->[1] }
+        sort { $a->[0] <=> $b->[0] }
+        map  { [ $self->{sql_map}{$_} => $_ ] }
+        keys %{ $self->{sql_map} };
+    for my $sql (@sqls) {
+        $self->print( $sql . "\0" );
+    }
 
     close $self->{fh};
 }

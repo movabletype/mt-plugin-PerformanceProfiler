@@ -13,6 +13,7 @@ use File::Temp;
 use JSON;
 use Sys::Hostname qw();
 use Time::HiRes qw(gettimeofday tv_interval);
+use Regexp::Trie;
 use MT::Util::UniqueID;
 use MT::Plugin::PerformanceProfiler::KYTProfLogger;
 use MT::Plugin::PerformanceProfiler::Guard;
@@ -61,6 +62,29 @@ sub enable_profile {
     $current_start    = [gettimeofday];
 
     if ( $profilers{KYTProf} ) {
+
+        # lazy init
+        if ( !Devel::KYTProf->namespace_regex ) {
+            my $tags = MT->registry('tags');
+            my %map  = ();
+            $map{$_} = 1 for map {
+                $_ =~ m{
+                    ^(?:\$[^:]+::)?     # ignore component notation
+                    (
+                      [^:]+::[^:]+(?=:) # has 2 or more levels (e.g. MT::Template::Tag::_handler)
+                      |
+                      [^:]+             # a top level (e.g. TopLevelPackage::_hanlder)
+                    )
+                }x ? $1 : ();
+                }
+                grep { !ref $_ }
+                map  { values %$_ } @$tags{qw(block function modifier)};
+
+            my $re = Regexp::Trie->new;
+            $re->add($_) for keys %map;
+
+            Devel::KYTProf->namespace_regex( $re->regexp );
+        }
 
         # XXX: force re-initialize $Devel::KYTProf::Profiler::DBI::_TRACER
         Devel::KYTProf::Profiler::DBI->apply;
@@ -150,7 +174,6 @@ sub init_app {
     if ( $profilers{KYTProf} ) {
         require Devel::KYTProf;
         Devel::KYTProf->apply_prof('DBI');
-        Devel::KYTProf->namespace_regex('MT::Template');
         finish_profile_kytprof;
     }
 
