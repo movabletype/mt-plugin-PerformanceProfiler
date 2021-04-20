@@ -7,8 +7,8 @@ This plugin enables you to recored performace profile.
 ## Installation
 
 1. Download an archive file from [releases](https://github.com/movabletype/mt-plugin-PerformanceProfiler/releases).
-1. Unpack an archive file.
-1. Upload unpacked files to your MT directory.
+1. Unpack the archive file.
+1. Upload the unpacked files to your MT directory.
 
 Should look like this when installed:
 
@@ -50,9 +50,6 @@ The default value is "10".
 * Movable Type 7
 
 ## Included Perl module
-
-The following module is included.
-The license for the module follows that of itself.
 
 * [Regexp::Trie](https://metacpan.org/pod/Regexp::Trie)
 
