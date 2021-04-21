@@ -10,6 +10,8 @@ use File::Spec;
 use File::Temp qw( tempdir );
 use MT::Test::Env;
 
+use_ok 'MT::Plugin::PerformanceProfiler::KYTProfLogger::v1';
+
 our $test_env;
 our $profiler_path;
 
@@ -18,7 +20,6 @@ BEGIN {
     $test_env      = MT::Test::Env->new(
         PerformanceProfilerPath      => $profiler_path,
         PerformanceProfilerFrequency => 1,
-        PerformanceProfilerMaxFiles  => 10,
         PluginPath                   => [ Cwd::realpath("$FindBin::Bin/../../../addons") ],
     );
 
@@ -63,26 +64,53 @@ my $objs = MT::Test::Fixture->prepare(
 my $blog1 = MT->model('website')->load( { name => $blog1_name } ) or die;
 
 MT->instance->rebuild_indexes( Blog => $blog1 );
-my @profiles_for_index        = glob( File::Spec->catfile( $profiler_path, '*' ) );
+my @profiles_for_index        = glob( File::Spec->catfile( $profiler_path, '*', '*' ) );
 my @profiles_for_index_ctimes = map { ( stat($_) )[10] } @profiles_for_index;
 is scalar(@profiles_for_index), 6;
 
 MT->instance->rebuild( Blog => $blog1 );
-my @profiles_for_all = glob( File::Spec->catfile( $profiler_path, '*' ) );
-is scalar(@profiles_for_all), 10;
-cmp_deeply( [ map { ( stat($_) )[10] } @profiles_for_all ],
-    noneof(@profiles_for_index_ctimes), 'removed' );
+my @profiles_for_all = glob( File::Spec->catfile( $profiler_path, '*', '*' ) );
+is scalar(@profiles_for_all), 23;
 
-my $footer = MT::Util::from_json(
-    do {
-        open my $fh, '<', $profiles_for_all[0];
-        my @lines = <$fh>;
-        $lines[-1];
-    }
-);
-ok $footer->{archive_type};
-ok $footer->{runtime};
-is $footer->{product_version}, $MT::PRODUCT_VERSION;
-is $footer->{version},         $MT::VERSION;
+my ($file) = @profiles_for_all;
+
+open my $fh, '<', $file;
+
+sysread $fh, my $version_data, 1;
+my $version = unpack('C', $version_data);
+is $version, 1;
+
+my $unpack_record = MT::Plugin::PerformanceProfiler::KYTProfLogger::v1::PACK_RECORD();
+my $terminator = $MT::Plugin::PerformanceProfiler::KYTProfLogger::v1::terminator;
+my $record_size = length($terminator);
+
+{
+    sysread($fh, my $data, $record_size);
+    my ($runtime, $package_index, $line, $sql_index) = unpack($unpack_record, $data);
+    is $version, 1;
+    ok $runtime;
+    is $package_index, 0; # The first line is always 0
+    ok $line;
+    is $sql_index, 0; # The first line is always 0
+};
+
+while (1) {
+    sysread($fh, my $data, $record_size)
+        or die 'unexpected EOF';
+    last if $data eq $terminator;
+}
+
+sysread($fh, my $data, (stat($file))[7]);
+my ($meta_json, @sqls) = split /\0/, $data;
+
+my $meta = MT::Util::from_json($meta_json);
+ok $meta->{archive_type};
+ok $meta->{runtime};
+is $meta->{product_version}, $MT::PRODUCT_VERSION;
+is $meta->{version},         $MT::VERSION;
+
+for my $sql (@sqls) {
+    like $sql, qr/^SELECT/i;
+}
 
 done_testing;

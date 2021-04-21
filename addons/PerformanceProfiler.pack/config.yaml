@@ -11,8 +11,6 @@ config_settings:
     default: ""
   PerformanceProfilerFrequency:
     default: 10
-  PerformanceProfilerMaxFiles:
-    default: 1000
 
 callbacks:
   MT::App::CMS::init_app: $PerformanceProfiler::MT::Plugin::PerformanceProfiler::init_app

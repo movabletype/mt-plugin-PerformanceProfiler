@@ -17,7 +17,6 @@ BEGIN {
     $test_env      = MT::Test::Env->new(
         PerformanceProfilerPath      => $profiler_path,
         PerformanceProfilerFrequency => 2,
-        PerformanceProfilerMaxFiles  => 100,
         PluginPath                   => [ Cwd::realpath("$FindBin::Bin/../../../addons") ],
     );
 
@@ -62,7 +61,7 @@ my $objs = MT::Test::Fixture->prepare(
 my $blog1 = MT->model('website')->load( { name => $blog1_name } ) or die;
 
 MT->instance->rebuild( Blog => $blog1 );
-my @files = glob( File::Spec->catfile( $profiler_path, '*' ) );
+my @files = glob( File::Spec->catfile( $profiler_path, '*', '*' ) );
 my $count = scalar @files;
 
 ok $count > 1;
