@@ -15,7 +15,7 @@ use Sys::Hostname qw();
 use Time::HiRes qw(gettimeofday tv_interval);
 use Regexp::Trie;
 use MT::Util::UniqueID;
-use MT::Plugin::PerformanceProfiler::KYTProfLogger;
+use MT::Plugin::PerformanceProfiler::KYTProfLoggerFactory;
 use MT::Plugin::PerformanceProfiler::Guard;
 
 use constant FILE_PREFIX => 'b-';
@@ -89,8 +89,10 @@ sub enable_profile {
         # XXX: force re-initialize $Devel::KYTProf::Profiler::DBI::_TRACER
         Devel::KYTProf::Profiler::DBI->apply;
         Devel::KYTProf->logger(
-            MT::Plugin::PerformanceProfiler::KYTProfLogger->new(
-                tmp_file_name('kyt'), $json_encoder
+            MT::Plugin::PerformanceProfiler::KYTProfLoggerFactory->new_logger(
+                {   file_name => tmp_file_name('kyt'),
+                    encoder   => $json_encoder,
+                }
             )
         );
     }
