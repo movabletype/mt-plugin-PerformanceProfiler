@@ -1,0 +1,43 @@
+# carton snapshot format: version 1.0
+DISTRIBUTIONS
+  Class-Data-Lite-0.0010
+    pathname: S/SO/SONGMU/Class-Data-Lite-0.0010.tar.gz
+    provides:
+      Class::Data::Lite 0.0010
+    requirements:
+      Module::Build::Tiny 0.035
+      perl 5.008001
+  DBIx-Tracer-0.03
+    pathname: T/TO/TOKUHIROM/DBIx-Tracer-0.03.tar.gz
+    provides:
+      DBIx::Tracer 0.03
+    requirements:
+      DBD::SQLite 1.48
+      DBI 0
+      Module::Build::Tiny 0.035
+      parent 0
+      perl 5.008008
+  Devel-KYTProf-0.9994
+    pathname: S/SO/SONGMU/Devel-KYTProf-0.9994.tar.gz
+    provides:
+      Devel::KYTProf 0.9994
+      Devel::KYTProf::Logger::LTSV undef
+      Devel::KYTProf::Profiler::Cache::Memcached::Fast undef
+      Devel::KYTProf::Profiler::DBI undef
+      Devel::KYTProf::Profiler::Furl::HTTP undef
+      Devel::KYTProf::Profiler::LWP::UserAgent undef
+      Devel::KYTProf::Profiler::MogileFS::Client undef
+    requirements:
+      Class::Data::Lite 0
+      Class::Inspector 0
+      DBIx::Tracer 0
+      Module::Build::Tiny 0.035
+      Module::Load 0
+      Term::ANSIColor 0
+      perl 5.008_001
+  Regexp-Trie-0.02
+    pathname: D/DA/DANKOGAI/Regexp-Trie-0.02.tar.gz
+    provides:
+      Regexp::Trie 0.02
+    requirements:
+      ExtUtils::MakeMaker 0

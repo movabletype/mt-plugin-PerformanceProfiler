@@ -10,6 +10,10 @@
 ^MYMETA.json$
 ^blib/
 
+# cpanfile
+cpanfile
+cpanfile.snapshot
+
 # Artwork data for description
 ^artwork/
 
