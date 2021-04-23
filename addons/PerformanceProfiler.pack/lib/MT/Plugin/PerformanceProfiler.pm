@@ -8,6 +8,7 @@ use utf8;
 use Digest::SHA1 qw(sha1_hex);
 use File::Copy qw(move);
 use File::Basename qw(basename);
+use File::Path qw(mkpath);
 use File::Spec;
 use File::Temp;
 use JSON;
@@ -185,7 +186,7 @@ sub init_app {
         require Devel::NYTProf;
     }
 
-    mkdir $dir unless -d $dir;
+    mkpath($dir) unless -d $dir;
 
     1;
 }
