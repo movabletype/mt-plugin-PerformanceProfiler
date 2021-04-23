@@ -49,8 +49,11 @@ The default value is "10".
 
 * Movable Type 7
 
-## Included Perl module
+## Included Perl modules
 
+* [Devel::KYTProf](https://metacpan.org/pod/Devel::KYTProf)
+* [Class::Data::Lite](https://metacpan.org/pod/Class::Data::Lite)
+* [DBIx::Tracer](https://metacpan.org/pod/DBIx::Tracer)
 * [Regexp::Trie](https://metacpan.org/pod/Regexp::Trie)
 
 ## LICENSE
