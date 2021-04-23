@@ -9,6 +9,7 @@
 ^MYMETA.yml$
 ^MYMETA.json$
 ^blib/
+^cpanfile
 
 # Artwork data for description
 ^artwork/
