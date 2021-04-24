@@ -36,7 +36,7 @@ sub log {
     my $self = shift;
     my %args = @_;
 
-    my $time = int( $args{time} * 1000 );    # milliseconds
+    my $time = int( $args{time} * 1000 + 0.5 );    # milliseconds
     if ( $time > 65535 ) {
 
         # I thing that a single inquiry does not take more than a minute.
