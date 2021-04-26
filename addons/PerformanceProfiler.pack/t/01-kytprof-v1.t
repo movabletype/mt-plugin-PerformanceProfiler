@@ -4,6 +4,7 @@ use FindBin;
 use Cwd;
 
 use lib Cwd::realpath("./t/lib"), "$FindBin::Bin/lib";
+use Time::Piece;
 use Test::More;
 use Test::Deep;
 use File::Spec;
@@ -62,6 +63,7 @@ my $objs = MT::Test::Fixture->prepare(
 );
 
 my $blog1 = MT->model('website')->load( { name => $blog1_name } ) or die;
+my $time_start = gmtime();
 
 MT->instance->rebuild_indexes( Blog => $blog1 );
 my @profiles_for_index        = glob( File::Spec->catfile( $profiler_path, '*', '*' ) );
@@ -71,6 +73,8 @@ is scalar(@profiles_for_index), 6;
 MT->instance->rebuild( Blog => $blog1 );
 my @profiles_for_all = glob( File::Spec->catfile( $profiler_path, '*', '*' ) );
 is scalar(@profiles_for_all), 23;
+
+my $time_end = gmtime();
 
 my ($file) = @profiles_for_all;
 
@@ -104,6 +108,8 @@ sysread($fh, my $data, (stat($file))[7]);
 my ($meta_json, @sqls) = split /\0/, $data;
 
 my $meta = MT::Util::from_json($meta_json);
+my $time = Time::Piece->strptime($meta->{timestamp}, "%Y-%m-%dT%H:%M:%SZ");
+ok $time >= $time_start && $time <= $time_end;
 ok $meta->{archive_type};
 ok $meta->{runtime};
 is $meta->{product_version}, $MT::PRODUCT_VERSION;

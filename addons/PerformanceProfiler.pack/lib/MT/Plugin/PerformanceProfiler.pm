@@ -13,6 +13,7 @@ use File::Spec;
 use File::Temp;
 use JSON;
 use Sys::Hostname qw();
+use Time::Piece;
 use Time::HiRes qw(gettimeofday tv_interval);
 use Regexp::Trie;
 use MT::Util::UniqueID;
@@ -208,6 +209,7 @@ sub _build_file_filter {
     enable_profile(
         FILE_PREFIX . '%s-' . $filename,
         {   id              => $filename,
+            timestamp       => gmtime()->datetime . 'Z',
             instance_id     => Sys::Hostname::hostname,
             version         => $MT::VERSION,
             product_version => $MT::PRODUCT_VERSION,
