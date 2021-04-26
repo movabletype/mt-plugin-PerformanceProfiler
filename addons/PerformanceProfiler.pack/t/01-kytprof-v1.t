@@ -76,47 +76,30 @@ is scalar(@profiles_for_all), 23;
 
 my $time_end = gmtime();
 
-my ($file) = @profiles_for_all;
+subtest 'with parser cli', sub {
+    my $cli = "$FindBin::Bin/../../../tools/PerformanceProfiler.pack/main.py";
+    `$cli --help 2>&1`;
+    if ($?) {
+        plan skip_all => 'The runtime environment of cli is not ready';
+    }
 
-open my $fh, '<', $file;
+    my ($file) = @profiles_for_all;
+    my $data = MT::Util::from_json(`$cli dump $file`);
+    my $time = Time::Piece->strptime($data->{build}{timestamp}, "%Y-%m-%dT%H:%M:%SZ");
 
-sysread $fh, my $version_data, 1;
-my $version = unpack('C', $version_data);
-is $version, 1;
+    is $data->{version}, 1;
+    ok $data->{build}{archive_type};
+    ok $time >= $time_start && $time <= $time_end;
+    ok $data->{build}{runtime};
+    is $data->{build}{product_version}, $MT::PRODUCT_VERSION;
+    is $data->{build}{version},         $MT::VERSION;
 
-my $unpack_record = MT::Plugin::PerformanceProfiler::KYTProfLogger::v1::PACK_RECORD();
-my $terminator = $MT::Plugin::PerformanceProfiler::KYTProfLogger::v1::terminator;
-my $record_size = length($terminator);
+    my ($log) = @{$data->{logs}};
 
-{
-    sysread($fh, my $data, $record_size);
-    my ($runtime, $package_index, $line, $sql_index) = unpack($unpack_record, $data);
-    is $version, 1;
-    ok $runtime;
-    is $package_index, 0; # The first line is always 0
-    ok $line;
-    is $sql_index, 0; # The first line is always 0
+    ok $log->{runtime};
+    like $log->{package}, qr/^MT::/;
+    ok $log->{line};
+    like $log->{query}, qr/^SELECT/i;
 };
-
-while (1) {
-    sysread($fh, my $data, $record_size)
-        or die 'unexpected EOF';
-    last if $data eq $terminator;
-}
-
-sysread($fh, my $data, (stat($file))[7]);
-my ($meta_json, @sqls) = split /\0/, $data;
-
-my $meta = MT::Util::from_json($meta_json);
-my $time = Time::Piece->strptime($meta->{timestamp}, "%Y-%m-%dT%H:%M:%SZ");
-ok $time >= $time_start && $time <= $time_end;
-ok $meta->{archive_type};
-ok $meta->{runtime};
-is $meta->{product_version}, $MT::PRODUCT_VERSION;
-is $meta->{version},         $MT::VERSION;
-
-for my $sql (@sqls) {
-    like $sql, qr/^SELECT/i;
-}
 
 done_testing;
