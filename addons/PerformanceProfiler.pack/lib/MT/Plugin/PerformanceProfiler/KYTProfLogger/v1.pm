@@ -36,14 +36,14 @@ sub log {
     my $self = shift;
     my %args = @_;
 
-    my $time = int( $args{time} * 1000 );    # milliseconds
+    my $time = int( $args{time} * 1000 + 0.5 );    # milliseconds
     if ( $time > 65535 ) {
 
         # I thing that a single inquiry does not take more than a minute.
         $time = 65535;
     }
-    my $package_index = $self->{package_map}{ $args{package} } ||= $self->{package_index}++;
-    my $sql_index     = $self->{sql_map}{ $args{data}{sql} }   ||= $self->{sql_index}++;
+    my $package_index = $self->{package_map}{ $args{package} } //= $self->{package_index}++;
+    my $sql_index     = $self->{sql_map}{ $args{data}{sql} }   //= $self->{sql_index}++;
 
     $self->print( pack( PACK_RECORD, $time, $package_index, $args{line}, $sql_index ) );
 }
