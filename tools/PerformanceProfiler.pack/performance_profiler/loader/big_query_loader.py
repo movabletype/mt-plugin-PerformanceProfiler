@@ -54,6 +54,7 @@ class BigQueryLoader:
         self.dataset_id = opts.get("dataset_id", DEFAULT_DATASET_ID)
 
     def load(self, data):
+        jobs = []
         for table_id in TABLES.keys():
             table_full_name = f"{self.project}.{self.dataset_id}.{table_id}"
 
@@ -61,9 +62,11 @@ class BigQueryLoader:
             job = self.client.load_table_from_json(
                 data[table_id], table_full_name, job_config=job_config
             )
-            job.result()
 
-            print(f"Loaded {job.output_rows} rows into {table_full_name}.")
+            jobs.append(job)
+            print(f"Created a LoadJob: {job.job_id} to insert into {table_full_name}.")
+
+        return jobs
 
     def prepare(self):
         dataset = bigquery.Dataset(f"{self.project}.{self.dataset_id}")
