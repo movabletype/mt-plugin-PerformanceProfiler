@@ -1,4 +1,3 @@
-import sys
 import json
 
 import performance_profiler.util as util
@@ -16,10 +15,11 @@ class DumpCommand:
         parser = Parser()
 
         if len(args.files) == 0:
-            streams = [sys.stdin.buffer]
+            files = ["/dev/stdin"]
         else:
-            streams = util.get_streams(args.files)
+            files = util.get_files(args.files)
 
-        for stream in streams:
+        for file in files:
+            stream = util.get_stream(file)
             data = parser.parse(stream)
             print(json.dumps(data))
