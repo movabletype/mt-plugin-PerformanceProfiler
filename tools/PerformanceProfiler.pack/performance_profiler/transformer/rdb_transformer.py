@@ -13,30 +13,27 @@ def to_hash_value(str):
 class RDBTransformer:
     def __init__(self):
         self.sql_normalizer = SQLNormalizer()
+        self.query_map = {}
+
+    def __query_id(self, query, queries):
+        if query not in self.query_map:
+            hash_value = to_hash_value(query)
+            self.query_map[query] = hash_value
+            queries.append(
+                {
+                    "query": query,
+                    "id": hash_value,
+                    "identifier": to_hash_value(self.sql_normalizer.normalize(query)),
+                }
+            )
+
+        return self.query_map[query]
 
     def transform(self, data):
         build = copy(data["build"])
         build["id"] = to_hash_value(build["id"])
         logs = []
         queries = []
-
-        query_map = {}
-
-        def query_id(query):
-            if query not in query_map:
-                hash_value = to_hash_value(query)
-                query_map[query] = hash_value
-                queries.append(
-                    {
-                        "query": query,
-                        "id": hash_value,
-                        "identifier": to_hash_value(
-                            self.sql_normalizer.normalize(query)
-                        ),
-                    }
-                )
-
-            return query_map[query]
 
         for orig in data["logs"]:
             log = copy(orig)
@@ -47,7 +44,7 @@ class RDBTransformer:
                 continue
 
             log["build_id"] = build["id"]
-            log["query_id"] = query_id(query)
+            log["query_id"] = self.__query_id(query, queries)
             logs.append(log)
 
         return {
