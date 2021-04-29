@@ -1,0 +1,24 @@
+PROJECT=$(shell gcloud config get-value project)
+
+deploy:
+	gcloud --project ${PROJECT} functions deploy load_gcs_to_bigquery \
+		--region asia-northeast1 \
+		--trigger-topic load_gcs_to_bigquery \
+		--timeout 540 \
+		--memory 4096 \
+		--runtime python37
+
+install-scheduler: install-scheduler-check-env
+	gcloud --project ${PROJECT} pubsub topics create load_gcs_to_bigquery
+	gcloud --project ${PROJECT} scheduler jobs create pubsub load_gcs_to_bigquery \
+		--description 'Load profiling data to BigQuery' \
+		--schedule "0 * * * *" \
+		--topic load_gcs_to_bigquery \
+		--time-zone 'Asia/Tokyo' \
+		--message-body '' \
+		--attributes 'bucket=${SRC_BUCKET},name=performance_profile/'
+
+install-scheduler-check-env:
+ifndef SRC_BUCKET
+	$(error SRC_BUCKET is undefined)
+endif

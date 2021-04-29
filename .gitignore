@@ -1,9 +1,10 @@
+/Makefile
+/Makefile.old
+
 *~
 *.swp
 *.tar.gz
 *.zip
-Makefile
-Makefile.old
 MANIFEST
 MANIFEST.bak
 MYMETA.*
