@@ -1,5 +1,8 @@
 PROJECT=$(shell gcloud config get-value project)
 
+test:
+	python -m pytest
+
 deploy:
 	gcloud --project ${PROJECT} functions deploy load_gcs_to_bigquery \
 		--region asia-northeast1 \
