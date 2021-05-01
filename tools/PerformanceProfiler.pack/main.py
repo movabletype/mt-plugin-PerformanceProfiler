@@ -28,6 +28,16 @@ def load_gcs_to_bigquery(event, context):
     )
 
 
+def tidyup_bigquery(event, context):
+    main(
+        [
+            "tidyup",
+            "--loader",
+            "big_query",
+        ]
+    )
+
+
 def main(args=None):
     parser = argparse.ArgumentParser()
     subparsers = parser.add_subparsers()

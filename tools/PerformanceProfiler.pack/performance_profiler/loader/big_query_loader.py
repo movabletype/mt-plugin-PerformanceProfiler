@@ -94,6 +94,30 @@ class BigQueryLoader:
             print(f"Created view {table.project}.{table.dataset_id}.{table.table_id}")
 
     def tidyup(self):
-        # TODO
-        # dedup queries table
-        raise Exception("not implemented")
+        queries_table_name = f"{self.project}.{self.dataset_id}.queries"
+
+        tmp_table_name = f"{self.project}.{self.dataset_id}.queries_tmp"
+        tmp_table = bigquery.Table(tmp_table_name, schema=TABLES["queries"]["schema"])
+        tmp_table = self.client.create_table(tmp_table, exists_ok=True)
+
+        self.client.query(
+            f"""
+INSERT INTO {tmp_table_name}
+SELECT DISTINCT id, identifier, query FROM {queries_table_name}
+        """
+        ).result()
+
+        self.client.query(
+            f"""
+DELETE FROM {queries_table_name} WHERE id IN (SELECT id FROM {tmp_table_name})
+        """
+        ).result()
+
+        self.client.query(
+            f"""
+INSERT INTO {queries_table_name}
+SELECT * FROM {tmp_table_name}
+        """
+        ).result()
+
+        self.client.delete_table(tmp_table)
