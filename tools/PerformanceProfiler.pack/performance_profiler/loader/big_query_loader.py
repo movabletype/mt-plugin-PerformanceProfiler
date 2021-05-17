@@ -8,7 +8,6 @@ TABLES = {
             type_="MONTH",
         ),
         "schema": [
-            bigquery.SchemaField("id", "BYTES", mode="REQUIRED"),
             bigquery.SchemaField("version", "STRING", mode="REQUIRED"),
             bigquery.SchemaField("product_version", "STRING", mode="REQUIRED"),
             bigquery.SchemaField("instance_id", "STRING", mode="REQUIRED"),
@@ -16,18 +15,17 @@ TABLES = {
             bigquery.SchemaField("archive_type", "STRING", mode="REQUIRED"),
             bigquery.SchemaField("timestamp", "TIMESTAMP", mode="REQUIRED"),
             bigquery.SchemaField("runtime", "FLOAT64", mode="REQUIRED"),
-        ],
-    },
-    "logs": {
-        "time_partitioning": bigquery.TimePartitioning(
-            type_="MONTH",
-        ),
-        "schema": [
-            bigquery.SchemaField("build_id", "BYTES", mode="REQUIRED"),
-            bigquery.SchemaField("runtime", "FLOAT64", mode="REQUIRED"),
-            bigquery.SchemaField("package", "STRING", mode="REQUIRED"),
-            bigquery.SchemaField("line", "INT64", mode="REQUIRED"),
-            bigquery.SchemaField("query_id", "BYTES", mode="REQUIRED"),
+            bigquery.SchemaField(
+                "logs",
+                "RECORD",
+                mode="REPEATED",
+                fields=[
+                    bigquery.SchemaField("runtime", "FLOAT64", mode="REQUIRED"),
+                    bigquery.SchemaField("package", "STRING", mode="REQUIRED"),
+                    bigquery.SchemaField("line", "INT64", mode="REQUIRED"),
+                    bigquery.SchemaField("query_id", "BYTES", mode="REQUIRED"),
+                ],
+            ),
         ],
     },
     "queries": {

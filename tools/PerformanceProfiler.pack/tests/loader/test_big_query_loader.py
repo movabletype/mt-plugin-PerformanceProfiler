@@ -34,7 +34,6 @@ class TestLoad:
         data = {
             "builds": [
                 {
-                    "id": base64.b64encode(b"x").decode("utf-8"),
                     "version": "1",
                     "product_version": "1",
                     "instance_id": "x",
@@ -42,15 +41,14 @@ class TestLoad:
                     "archive_type": "index",
                     "timestamp": "2020-01-01T00:00:00Z",
                     "runtime": 0.001,
-                }
-            ],
-            "logs": [
-                {
-                    "build_id": base64.b64encode(b"x").decode("utf-8"),
-                    "package": "x",
-                    "line": 1,
-                    "runtime": 0.001,
-                    "query_id": base64.b64encode(b"x").decode("utf-8"),
+                    "logs": [
+                        {
+                            "package": "x",
+                            "line": 1,
+                            "runtime": 0.001,
+                            "query_id": base64.b64encode(b"x").decode("utf-8"),
+                        }
+                    ],
                 }
             ],
             "queries": [
@@ -76,7 +74,6 @@ class TestLoad:
         data = {
             "builds": [
                 {
-                    "id": base64.b64encode(b"x").decode("utf-8"),
                     "version": "1",
                     "product_version": "1",
                     "instance_id": "x",
@@ -84,15 +81,14 @@ class TestLoad:
                     "archive_type": "index",
                     "timestamp": "2020-01-01T00:00:00Z",
                     "runtime": 0.001,
-                }
-            ],
-            "logs": [
-                {
-                    "build_id": base64.b64encode(b"x").decode("utf-8"),
-                    "package": "x",
-                    "line": 1,
-                    "runtime": 0.001,
-                    "query_id": base64.b64encode(b"x").decode("utf-8"),
+                    "logs": [
+                        {
+                            "package": "x",
+                            "line": 1,
+                            "runtime": 0.001,
+                            "query_id": base64.b64encode(b"x").decode("utf-8"),
+                        }
+                    ],
                 }
             ],
             "queries": [

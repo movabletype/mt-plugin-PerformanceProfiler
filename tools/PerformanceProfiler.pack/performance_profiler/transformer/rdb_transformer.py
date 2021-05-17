@@ -31,8 +31,8 @@ class RDBTransformer:
 
     def transform(self, data):
         build = copy(data["build"])
-        build["id"] = to_hash_value(build["id"])
-        logs = []
+        build.pop("id")
+        build["logs"] = []
         queries = []
 
         for orig in data["logs"]:
@@ -43,12 +43,10 @@ class RDBTransformer:
             if re.match(r"(?:show variables|set names|\s*$)", query, re.IGNORECASE):
                 continue
 
-            log["build_id"] = build["id"]
             log["query_id"] = self.__query_id(query, queries)
-            logs.append(log)
+            build["logs"].append(log)
 
         return {
             "builds": [build],
-            "logs": logs,
             "queries": queries,
         }

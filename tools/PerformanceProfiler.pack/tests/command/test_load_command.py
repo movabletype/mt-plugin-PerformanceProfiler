@@ -47,7 +47,7 @@ class TestRun:
         result = json.load(open(outfile))
 
         assert len(result["builds"]) == 1
-        assert len(result["logs"]) == 1
+        assert sum(map(lambda x: len(x["logs"]), result["builds"])) == 1
         assert len(result["queries"]) == 1
         assert os.path.exists(files[0])
 
@@ -60,7 +60,7 @@ class TestRun:
         result = json.load(open(outfile))
 
         assert len(result["builds"]) == 1
-        assert len(result["logs"]) == 1
+        assert sum(map(lambda x: len(x["logs"]), result["builds"])) == 1
         assert len(result["queries"]) == 1
         assert not os.path.exists(files[0])
 
@@ -74,7 +74,7 @@ class TestRun:
         result = json.load(open(outfile))
 
         assert len(result["builds"]) == 10
-        assert len(result["logs"]) == 10
+        assert sum(map(lambda x: len(x["logs"]), result["builds"])) == 10
         assert len(result["queries"]) == 1
 
     def test_run_timeout(self, files, tmp_path, infinite_get_files):

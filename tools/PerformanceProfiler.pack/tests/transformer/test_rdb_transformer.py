@@ -39,16 +39,14 @@ def test_transform():
                 "timestamp": "2021-04-26T00:16:36Z",
                 "instance_id": "32b57e3dc152",
                 "archive_type": "index",
-                "id": "zJhHSXo7+3dX4qHu2AwVkzofB80=",
-            }
-        ],
-        "logs": [
-            {
-                "runtime": 0.405,
-                "package": "MT::Template",
-                "line": 408,
-                "build_id": "zJhHSXo7+3dX4qHu2AwVkzofB80=",
-                "query_id": "rVCfQbiq5Q36E9AD6M22mXsb19o=",
+                "logs": [
+                    {
+                        "runtime": 0.405,
+                        "package": "MT::Template",
+                        "line": 408,
+                        "query_id": None,
+                    }
+                ],
             }
         ],
         "queries": [
