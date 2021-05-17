@@ -1,3 +1,4 @@
+import json
 import re
 
 from base64 import b64encode
@@ -19,11 +20,13 @@ class RDBTransformer:
         if query not in self.query_map:
             hash_value = to_hash_value(query)
             self.query_map[query] = hash_value
+            normalized, structure = self.sql_normalizer.normalize(query)
             queries.append(
                 {
                     "query": query,
                     "id": hash_value,
-                    "identifier": to_hash_value(self.sql_normalizer.normalize(query)),
+                    "identifier": to_hash_value(normalized),
+                    "structure": json.dumps(structure),
                 }
             )
 

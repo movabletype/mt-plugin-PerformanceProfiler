@@ -123,7 +123,9 @@ normalizer = SQLNormalizer()
     ],
 )
 def test_normalize_identical(identical_queries):
-    normalized_queries = map(normalizer.normalize, identical_queries)
+    normalized_queries = map(
+        lambda x: x[0], map(normalizer.normalize, identical_queries)
+    )
     assert len(set(normalized_queries)) == 1
 
 
@@ -148,5 +150,7 @@ def test_normalize_identical(identical_queries):
     ],
 )
 def test_normalize_different(different_queries):
-    normalized_queries = map(normalizer.normalize, different_queries)
+    normalized_queries = map(
+        lambda x: x[0], map(normalizer.normalize, different_queries)
+    )
     assert len(set(normalized_queries)) > 1

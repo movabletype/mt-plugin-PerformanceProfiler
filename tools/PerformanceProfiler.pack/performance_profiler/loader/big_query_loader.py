@@ -34,13 +34,14 @@ TABLES = {
             bigquery.SchemaField("id", "BYTES", mode="REQUIRED"),
             bigquery.SchemaField("identifier", "BYTES", mode="REQUIRED"),
             bigquery.SchemaField("query", "STRING", mode="REQUIRED"),
+            bigquery.SchemaField("structure", "STRING", mode="REQUIRED"),
         ],
     },
 }
 
 VIEWS = {
     "unique_queries": {
-        "view_query": "SELECT DISTINCT id, identifier, query FROM {}.{}.queries"
+        "view_query": "SELECT DISTINCT id, identifier, query, structure FROM {}.{}.queries"
     },
 }
 
@@ -101,7 +102,7 @@ class BigQueryLoader:
         self.client.query(
             f"""
 INSERT INTO {tmp_table_name}
-SELECT DISTINCT id, identifier, query FROM {queries_table_name}
+SELECT DISTINCT id, identifier, query, structure FROM {queries_table_name}
         """
         ).result()
 

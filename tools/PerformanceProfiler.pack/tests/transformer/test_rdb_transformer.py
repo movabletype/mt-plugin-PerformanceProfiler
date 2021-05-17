@@ -44,7 +44,7 @@ def test_transform():
                         "runtime": 0.405,
                         "package": "MT::Template",
                         "line": 408,
-                        "query_id": None,
+                        "query_id": "rVCfQbiq5Q36E9AD6M22mXsb19o=",
                     }
                 ],
             }
@@ -53,7 +53,8 @@ def test_transform():
             {
                 "query": "SELECT template_meta_template_id, template_meta_type, template_meta_vchar, template_meta_vchar_idx, template_meta_vdatetime, template_meta_vdatetime_idx, template_meta_vinteger, template_meta_vinteger_idx, template_meta_vfloat, template_meta_vfloat_idx, template_meta_vblob, template_meta_vclob\nFROM mt_template_meta\nWHERE (template_meta_template_id = ?)\nORDER BY template_meta_template_id ASC, template_meta_type ASC\n",
                 "id": "rVCfQbiq5Q36E9AD6M22mXsb19o=",
-                "identifier": "MdG5Nfn324F5KfGGnY3Il3clCT4=",
+                "identifier": "btjKTutzM9oyJlbV5jnfzjhw0Rk=",
+                "structure": '{"select": [{"value": "template_meta_template_id"}, {"value": "template_meta_type"}, {"value": "template_meta_vblob"}, {"value": "template_meta_vchar"}, {"value": "template_meta_vchar_idx"}, {"value": "template_meta_vclob"}, {"value": "template_meta_vdatetime"}, {"value": "template_meta_vdatetime_idx"}, {"value": "template_meta_vfloat"}, {"value": "template_meta_vfloat_idx"}, {"value": "template_meta_vinteger"}, {"value": "template_meta_vinteger_idx"}], "from": "mt_template_meta", "where": {"eq": ["template_meta_template_id", "$v"]}, "orderby": [{"value": "template_meta_template_id", "sort": "asc"}, {"value": "template_meta_type", "sort": "asc"}]}',
             }
         ],
     }

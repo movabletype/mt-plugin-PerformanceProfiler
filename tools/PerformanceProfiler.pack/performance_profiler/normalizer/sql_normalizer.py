@@ -2,7 +2,7 @@ import json
 import re
 from moz_sql_parser import parse, format
 
-PLACEHOLDER = "__placeholder__"
+PLACEHOLDER = "$v"
 
 
 def sort_key(obj):
@@ -40,4 +40,4 @@ class SQLNormalizer:
         parsed = parse(sql)
         sort_terms(parsed)
         truncate_id_in(parsed)
-        return format(parsed).replace(PLACEHOLDER, "?")
+        return (format(parsed).replace(PLACEHOLDER, "?"), parsed)

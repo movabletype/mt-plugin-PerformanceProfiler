@@ -56,6 +56,7 @@ class TestLoad:
                     "id": base64.b64encode(b"x").decode("utf-8"),
                     "query": "x",
                     "identifier": base64.b64encode(b"x").decode("utf-8"),
+                    "structure": "x",
                 }
             ],
         }
@@ -96,16 +97,19 @@ class TestLoad:
                     "id": base64.b64encode(b"x").decode("utf-8"),
                     "query": "x",
                     "identifier": base64.b64encode(b"x").decode("utf-8"),
+                    "structure": "x",
                 },
                 {
                     "id": base64.b64encode(b"x").decode("utf-8"),
                     "query": "x",
                     "identifier": base64.b64encode(b"x").decode("utf-8"),
+                    "structure": "x",
                 },
                 {
                     "id": base64.b64encode(b"y").decode("utf-8"),
                     "query": "y",
                     "identifier": base64.b64encode(b"y").decode("utf-8"),
+                    "structure": "y",
                 },
             ],
         }
