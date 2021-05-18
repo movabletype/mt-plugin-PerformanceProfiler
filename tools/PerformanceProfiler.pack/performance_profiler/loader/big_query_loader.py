@@ -7,6 +7,7 @@ TABLES = {
         "time_partitioning": bigquery.TimePartitioning(
             type_="MONTH",
         ),
+        "clustering_fields": ["product_version"],
         "schema": [
             bigquery.SchemaField("version", "STRING", mode="REQUIRED"),
             bigquery.SchemaField("product_version", "STRING", mode="REQUIRED"),
@@ -30,6 +31,7 @@ TABLES = {
     },
     "queries": {
         "time_partitioning": None,
+        "clustering_fields": None,
         "schema": [
             bigquery.SchemaField("id", "BYTES", mode="REQUIRED"),
             bigquery.SchemaField("identifier", "BYTES", mode="REQUIRED"),
@@ -81,6 +83,9 @@ class BigQueryLoader:
             if TABLES[table_id]["time_partitioning"]:
                 table.time_partitioning = TABLES[table_id]["time_partitioning"]
                 table.require_partition_filter = True
+
+            if TABLES[table_id]["clustering_fields"]:
+                table.clustering_fields = TABLES[table_id]["clustering_fields"]
 
             table = self.client.create_table(table, exists_ok=True)
             print(f"Created table {table.project}.{table.dataset_id}.{table.table_id}")
