@@ -78,7 +78,10 @@ class BigQueryLoader:
             table_full_name = f"{self.project}.{self.dataset_id}.{table_id}"
 
             table = bigquery.Table(table_full_name, schema=TABLES[table_id]["schema"])
-            table.time_partitioning = TABLES[table_id]["time_partitioning"]
+            if TABLES[table_id]["time_partitioning"]:
+                table.time_partitioning = TABLES[table_id]["time_partitioning"]
+                table.require_partition_filter = True
+
             table = self.client.create_table(table, exists_ok=True)
             print(f"Created table {table.project}.{table.dataset_id}.{table.table_id}")
 
