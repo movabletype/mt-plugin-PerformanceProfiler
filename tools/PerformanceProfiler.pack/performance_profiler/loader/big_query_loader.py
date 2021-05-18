@@ -6,6 +6,7 @@ TABLES = {
     "builds": {
         "time_partitioning": bigquery.TimePartitioning(
             type_="MONTH",
+            field="timestamp",
         ),
         "clustering_fields": ["product_version"],
         "schema": [
