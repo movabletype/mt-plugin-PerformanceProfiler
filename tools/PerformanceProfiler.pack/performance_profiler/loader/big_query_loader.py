@@ -60,7 +60,12 @@ class BigQueryLoader:
         for table_id in TABLES.keys():
             table_full_name = f"{self.project}.{self.dataset_id}.{table_id}"
 
-            job_config = bigquery.LoadJobConfig(schema=TABLES[table_id]["schema"])
+            job_config = bigquery.LoadJobConfig(
+                schema=TABLES[table_id]["schema"],
+                time_partitioning=TABLES[table_id]["time_partitioning"],
+                clustering_fields=TABLES[table_id]["clustering_fields"],
+            )
+
             job = self.client.load_table_from_json(
                 data[table_id], table_full_name, job_config=job_config
             )
