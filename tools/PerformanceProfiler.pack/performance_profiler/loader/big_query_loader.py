@@ -54,6 +54,7 @@ class BigQueryLoader:
         self.client = opts.get("client", bigquery.Client())
         self.project = opts.get("project", self.client.project)
         self.dataset_id = opts.get("dataset_id", DEFAULT_DATASET_ID)
+        self.location = opts.get("location", None)
 
     def load(self, data):
         jobs = []
@@ -77,7 +78,7 @@ class BigQueryLoader:
 
     def prepare(self):
         dataset = bigquery.Dataset(f"{self.project}.{self.dataset_id}")
-        dataset.location = "asia-northeast1"
+        dataset.location = self.location
         dataset = self.client.create_dataset(dataset, exists_ok=True)
 
         print(f"Created dataset {dataset.project}.{dataset.dataset_id}")
