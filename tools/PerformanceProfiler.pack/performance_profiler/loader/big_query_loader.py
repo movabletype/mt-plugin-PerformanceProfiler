@@ -1,9 +1,11 @@
+import copy
 from google.cloud import bigquery
 
 DEFAULT_DATASET_ID = "kytprof"
 
 TABLES = {
     "builds": {
+        "load_data_key": "builds",
         "time_partitioning": bigquery.TimePartitioning(
             type_="MONTH",
             field="timestamp",
@@ -31,6 +33,7 @@ TABLES = {
         ],
     },
     "queries": {
+        "load_data_key": None,
         "time_partitioning": None,
         "clustering_fields": None,
         "schema": [
@@ -42,11 +45,8 @@ TABLES = {
     },
 }
 
-VIEWS = {
-    "unique_queries": {
-        "view_query": "SELECT DISTINCT id, identifier, query, structure FROM {}.{}.queries"
-    },
-}
+TABLES["queries_buffer"] = copy.copy(TABLES["queries"])
+TABLES["queries_buffer"]["load_data_key"] = "queries"
 
 
 class BigQueryLoader:
@@ -59,6 +59,10 @@ class BigQueryLoader:
     def load(self, data):
         jobs = []
         for table_id in TABLES.keys():
+            data_key = TABLES[table_id]["load_data_key"]
+            if not data_key or data_key not in data:
+                continue
+
             table_full_name = f"{self.project}.{self.dataset_id}.{table_id}"
 
             job_config = bigquery.LoadJobConfig(
@@ -68,7 +72,7 @@ class BigQueryLoader:
             )
 
             job = self.client.load_table_from_json(
-                data[table_id], table_full_name, job_config=job_config
+                data[data_key], table_full_name, job_config=job_config
             )
 
             jobs.append(job)
@@ -97,41 +101,41 @@ class BigQueryLoader:
             table = self.client.create_table(table, exists_ok=True)
             print(f"Created table {table.project}.{table.dataset_id}.{table.table_id}")
 
-        for table_id in VIEWS.keys():
-            table_full_name = f"{self.project}.{self.dataset_id}.{table_id}"
-
-            table = bigquery.Table(table_full_name)
-            table.view_query = VIEWS[table_id]["view_query"].format(
-                self.project, self.dataset_id
-            )
-            table = self.client.create_table(table, exists_ok=True)
-            print(f"Created view {table.project}.{table.dataset_id}.{table.table_id}")
-
     def tidyup(self):
-        queries_table_name = f"{self.project}.{self.dataset_id}.queries"
+        dataset = f"{self.project}.{self.dataset_id}"
 
-        tmp_table_name = f"{self.project}.{self.dataset_id}.queries_tmp"
-        tmp_table = bigquery.Table(tmp_table_name, schema=TABLES["queries"]["schema"])
-        tmp_table = self.client.create_table(tmp_table, exists_ok=True)
+        newcommers_count = list(
+            self.client.query(
+                f"""
+SELECT COUNT(id) FROM `{dataset}.queries_buffer`
+"""
+            ).result()
+        )[0][0]
+        if newcommers_count == 0:
+            # already tidied up
+            return []
 
-        self.client.query(
+        jobs = []
+
+        select_cols = ", ".join(map(lambda x: x.name, TABLES["queries"]["schema"]))
+        job = self.client.query(
             f"""
-INSERT INTO {tmp_table_name}
-SELECT DISTINCT id, identifier, query, structure FROM {queries_table_name}
-        """
-        ).result()
+-- add newcommers from queries_buffer to queries
+CREATE OR REPLACE TABLE `{dataset}.queries`
+AS
+WITH all_queries AS (
+  SELECT {select_cols} FROM `{dataset}.queries`
+  UNION ALL
+  SELECT {select_cols} FROM `{dataset}.queries_buffer`
+)
+SELECT DISTINCT {select_cols}
+FROM all_queries;
 
-        self.client.query(
-            f"""
-DELETE FROM {queries_table_name} WHERE id IN (SELECT id FROM {tmp_table_name})
+-- delete known queries from queries_buffer
+DELETE FROM `{dataset}.queries_buffer`
+WHERE id IN (SELECT id FROM `{dataset}.queries`);
         """
-        ).result()
+        )
+        jobs.append(job)
 
-        self.client.query(
-            f"""
-INSERT INTO {queries_table_name}
-SELECT * FROM {tmp_table_name}
-        """
-        ).result()
-
-        self.client.delete_table(tmp_table)
+        return jobs
