@@ -1,5 +1,4 @@
 import json
-import re
 from moz_sql_parser import parse, format
 
 PLACEHOLDER = "$v"
