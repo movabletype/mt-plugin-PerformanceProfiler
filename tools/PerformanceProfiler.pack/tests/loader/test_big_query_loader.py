@@ -3,7 +3,7 @@ import secrets
 import base64
 from google.cloud import bigquery
 
-from performance_profiler.loader.big_query_loader import BigQueryLoader, TABLES, VIEWS
+from performance_profiler.loader.big_query_loader import BigQueryLoader, TABLES
 
 
 class TestLoad:
@@ -23,7 +23,7 @@ class TestLoad:
     def test_prepare(self, bq_client, dataset, loader):
         loader.prepare()
 
-        for t in list(TABLES.keys()) + list(VIEWS.keys()):
+        for t in TABLES.keys():
             table_full_name = f"{dataset.project}.{dataset.dataset_id}.{t}"
             table = bigquery.Table(table_full_name)
             assert bq_client.get_table(table)
@@ -118,8 +118,8 @@ class TestLoad:
         for j in jobs:
             j.result()
 
-        def select_queries():
-            queries_table_name = f"{dataset.project}.{dataset.dataset_id}.queries"
+        def select_queries(table):
+            queries_table_name = f"{dataset.project}.{dataset.dataset_id}.{table}"
             res = bq_client.query(
                 f"""
 SELECT query FROM {queries_table_name} ORDER BY query ASC
@@ -128,8 +128,16 @@ SELECT query FROM {queries_table_name} ORDER BY query ASC
 
             return list(map(lambda r: r.query, res))
 
-        assert select_queries() == ["x", "x", "y"]
+        assert select_queries("queries_buffer") == ["x", "x", "y"]
+        assert select_queries("queries") == []
 
-        loader.tidyup()
+        jobs = loader.tidyup()
 
-        assert select_queries() == ["x", "y"]
+        for j in jobs:
+            try:
+                j.result()
+            except Exception as e:
+                raise Exception(j.errors)
+
+        assert select_queries("queries_buffer") == []
+        assert select_queries("queries") == ["x", "y"]
