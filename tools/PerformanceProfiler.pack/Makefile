@@ -1,6 +1,6 @@
 PROJECT=$(shell gcloud config get-value project)
 FUNCIONS_REGION=$(shell gcloud config get-value functions/region)
-SCHEDULER_TIME_ZONE:=Etc/UTC
+SCHEDULER_TIME_ZONE=Etc/UTC
 
 test:
 	python -m pytest
