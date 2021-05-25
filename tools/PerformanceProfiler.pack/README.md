@@ -25,6 +25,22 @@ optional arguments:
   -h, --help            show this help message and exit
 ```
 
+## Deployment
+
+```
+$ make deploy            # deploy cloud functions
+$ make install-scheduler # install schedulers that invokes cloud functions
+```
+
+### Variables
+
+* PROJECT
+    * if unset, we try to get from `gcloud config get-value project`.
+* FUNCIONS\_REGION : region for the Cloud Functions
+    * if unset, we try to get from `gcloud config get-value functions/region`.
+* SCHEDULER\_TIME\_ZONE : time zone for the Cloud Scheduler
+* SRC\_BUCKET : source bucket
+
 ## Test
 
 ```
