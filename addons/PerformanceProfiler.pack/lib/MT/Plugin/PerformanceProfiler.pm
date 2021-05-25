@@ -34,7 +34,7 @@ sub path {
 }
 
 sub enabled {
-    return !!path();
+    return !!path() && $freq && $freq > 0;
 }
 
 sub tmp_file_name {
