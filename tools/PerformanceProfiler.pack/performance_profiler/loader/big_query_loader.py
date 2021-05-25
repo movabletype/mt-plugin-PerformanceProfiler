@@ -1,9 +1,11 @@
+import copy
 from google.cloud import bigquery
 
 DEFAULT_DATASET_ID = "kytprof"
 
 TABLES = {
     "builds": {
+        "load_data_key": "builds",
         "time_partitioning": bigquery.TimePartitioning(
             type_="MONTH",
             field="timestamp",
@@ -31,6 +33,7 @@ TABLES = {
         ],
     },
     "queries": {
+        "load_data_key": None,
         "time_partitioning": None,
         "clustering_fields": None,
         "schema": [
@@ -42,11 +45,8 @@ TABLES = {
     },
 }
 
-VIEWS = {
-    "unique_queries": {
-        "view_query": "SELECT DISTINCT id, identifier, query, structure FROM {}.{}.queries"
-    },
-}
+TABLES["queries_buffer"] = copy.copy(TABLES["queries"])
+TABLES["queries_buffer"]["load_data_key"] = "queries"
 
 
 class BigQueryLoader:
@@ -55,11 +55,16 @@ class BigQueryLoader:
         self.project = opts.get("project", self.client.project)
         self.dataset_id = opts.get("dataset_id", DEFAULT_DATASET_ID)
         self.location = opts.get("location", None)
+        self.dataset = f"{self.project}.{self.dataset_id}"  # shorthand
 
     def load(self, data):
         jobs = []
         for table_id in TABLES.keys():
-            table_full_name = f"{self.project}.{self.dataset_id}.{table_id}"
+            data_key = TABLES[table_id]["load_data_key"]
+            if not data_key or data_key not in data:
+                continue
+
+            table_full_name = f"{self.dataset}.{table_id}"
 
             job_config = bigquery.LoadJobConfig(
                 schema=TABLES[table_id]["schema"],
@@ -68,7 +73,7 @@ class BigQueryLoader:
             )
 
             job = self.client.load_table_from_json(
-                data[table_id], table_full_name, job_config=job_config
+                data[data_key], table_full_name, job_config=job_config
             )
 
             jobs.append(job)
@@ -77,61 +82,68 @@ class BigQueryLoader:
         return jobs
 
     def prepare(self):
-        dataset = bigquery.Dataset(f"{self.project}.{self.dataset_id}")
+        dataset = bigquery.Dataset(f"{self.dataset}")
         dataset.location = self.location
         dataset = self.client.create_dataset(dataset, exists_ok=True)
 
         print(f"Created dataset {dataset.project}.{dataset.dataset_id}")
 
         for table_id in TABLES.keys():
-            table_full_name = f"{self.project}.{self.dataset_id}.{table_id}"
+            self.create_table(table_id)
 
-            table = bigquery.Table(table_full_name, schema=TABLES[table_id]["schema"])
-            if TABLES[table_id]["time_partitioning"]:
-                table.time_partitioning = TABLES[table_id]["time_partitioning"]
-                table.require_partition_filter = True
+    def _count_new_queries(self):
+        return list(
+            self.client.query(
+                f"""
+SELECT COUNT(qb.id) FROM `{self.dataset}.queries_buffer` qb
+WHERE NOT EXISTS (
+  SELECT 1
+  FROM `{self.dataset}.queries` q
+  WHERE qb.id = q.id
+);
+        """
+            ).result()
+        )[0][0]
 
-            if TABLES[table_id]["clustering_fields"]:
-                table.clustering_fields = TABLES[table_id]["clustering_fields"]
-
-            table = self.client.create_table(table, exists_ok=True)
-            print(f"Created table {table.project}.{table.dataset_id}.{table.table_id}")
-
-        for table_id in VIEWS.keys():
-            table_full_name = f"{self.project}.{self.dataset_id}.{table_id}"
-
-            table = bigquery.Table(table_full_name)
-            table.view_query = VIEWS[table_id]["view_query"].format(
-                self.project, self.dataset_id
-            )
-            table = self.client.create_table(table, exists_ok=True)
-            print(f"Created view {table.project}.{table.dataset_id}.{table.table_id}")
+    def _add_new_queries(self):
+        select_cols = ", ".join(map(lambda x: x.name, TABLES["queries"]["schema"]))
+        self.client.query(
+            f"""
+-- add newcommers from queries_buffer to queries
+INSERT INTO `{self.dataset}.queries`
+SELECT DISTINCT {select_cols} FROM `{self.dataset}.queries_buffer` qb
+WHERE NOT EXISTS (
+  SELECT 1
+  FROM `{self.dataset}.queries` q
+  WHERE qb.id = q.id
+);
+        """
+        ).result()
 
     def tidyup(self):
-        queries_table_name = f"{self.project}.{self.dataset_id}.queries"
+        buffer_table = self.client.get_table(f"{self.dataset}.queries_buffer")
+        if buffer_table.num_rows == 0:
+            # nothing to do
+            return
 
-        tmp_table_name = f"{self.project}.{self.dataset_id}.queries_tmp"
-        tmp_table = bigquery.Table(tmp_table_name, schema=TABLES["queries"]["schema"])
-        tmp_table = self.client.create_table(tmp_table, exists_ok=True)
+        new_queries_count = self._count_new_queries()
+        if new_queries_count > 0:
+            print(f"we are going to add new queries: {new_queries_count}")
+            self._add_new_queries()
 
-        self.client.query(
-            f"""
-INSERT INTO {tmp_table_name}
-SELECT DISTINCT id, identifier, query, structure FROM {queries_table_name}
-        """
-        ).result()
+        self.client.delete_table(buffer_table)
+        self.create_table("queries_buffer")
 
-        self.client.query(
-            f"""
-DELETE FROM {queries_table_name} WHERE id IN (SELECT id FROM {tmp_table_name})
-        """
-        ).result()
+    def create_table(self, table_id):
+        table_full_name = f"{self.dataset}.{table_id}"
 
-        self.client.query(
-            f"""
-INSERT INTO {queries_table_name}
-SELECT * FROM {tmp_table_name}
-        """
-        ).result()
+        table = bigquery.Table(table_full_name, schema=TABLES[table_id]["schema"])
+        if TABLES[table_id]["time_partitioning"]:
+            table.time_partitioning = TABLES[table_id]["time_partitioning"]
+            table.require_partition_filter = True
 
-        self.client.delete_table(tmp_table)
+        if TABLES[table_id]["clustering_fields"]:
+            table.clustering_fields = TABLES[table_id]["clustering_fields"]
+
+        table = self.client.create_table(table, exists_ok=True)
+        print(f"Created table {table.project}.{table.dataset_id}.{table.table_id}")

@@ -31,7 +31,7 @@ install-scheduler: install-scheduler-check-env
 	gcloud --project ${PROJECT} pubsub topics create tidyup_bigquery
 	gcloud --project ${PROJECT} scheduler jobs create pubsub tidyup_bigquery \
 		--description 'Tidyup BigQuery' \
-		--schedule "0 0 * * *" \
+		--schedule "10 * * * *" \
 		--topic tidyup_bigquery \
 		--time-zone ${SCHEDULER_TIME_ZONE} \
 		--message-body 'dummy'
