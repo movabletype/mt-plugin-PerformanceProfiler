@@ -88,18 +88,7 @@ class BigQueryLoader:
         print(f"Created dataset {dataset.project}.{dataset.dataset_id}")
 
         for table_id in TABLES.keys():
-            table_full_name = f"{self.project}.{self.dataset_id}.{table_id}"
-
-            table = bigquery.Table(table_full_name, schema=TABLES[table_id]["schema"])
-            if TABLES[table_id]["time_partitioning"]:
-                table.time_partitioning = TABLES[table_id]["time_partitioning"]
-                table.require_partition_filter = True
-
-            if TABLES[table_id]["clustering_fields"]:
-                table.clustering_fields = TABLES[table_id]["clustering_fields"]
-
-            table = self.client.create_table(table, exists_ok=True)
-            print(f"Created table {table.project}.{table.dataset_id}.{table.table_id}")
+            self.create_table(table_id)
 
     def tidyup(self):
         dataset = f"{self.project}.{self.dataset_id}"
@@ -137,3 +126,17 @@ WHERE EXISTS (
         jobs.append(job)
 
         return jobs
+
+    def create_table(self, table_id):
+        table_full_name = f"{self.project}.{self.dataset_id}.{table_id}"
+
+        table = bigquery.Table(table_full_name, schema=TABLES[table_id]["schema"])
+        if TABLES[table_id]["time_partitioning"]:
+            table.time_partitioning = TABLES[table_id]["time_partitioning"]
+            table.require_partition_filter = True
+
+        if TABLES[table_id]["clustering_fields"]:
+            table.clustering_fields = TABLES[table_id]["clustering_fields"]
+
+        table = self.client.create_table(table, exists_ok=True)
+        print(f"Created table {table.project}.{table.dataset_id}.{table.table_id}")
