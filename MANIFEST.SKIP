@@ -31,3 +31,8 @@ package.json
 
 # Github pages
 ^docs/
+
+# test
+^t/
+^addons/PerformanceProfiler.pack/t/
+^addons/PerformanceProfiler.pack/xt/
