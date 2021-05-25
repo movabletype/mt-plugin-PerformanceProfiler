@@ -131,13 +131,7 @@ SELECT query FROM {queries_table_name} ORDER BY query ASC
         assert select_queries("queries_buffer") == ["x", "x", "y"]
         assert select_queries("queries") == []
 
-        jobs = loader.tidyup()
-
-        for j in jobs:
-            try:
-                j.result()
-            except Exception as e:
-                raise Exception(j.errors)
+        loader.tidyup()
 
         assert select_queries("queries_buffer") == []
         assert select_queries("queries") == ["x", "y"]

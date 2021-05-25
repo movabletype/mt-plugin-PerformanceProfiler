@@ -55,6 +55,7 @@ class BigQueryLoader:
         self.project = opts.get("project", self.client.project)
         self.dataset_id = opts.get("dataset_id", DEFAULT_DATASET_ID)
         self.location = opts.get("location", None)
+        self.dataset = f"{self.project}.{self.dataset_id}"  # shorthand
 
     def load(self, data):
         jobs = []
@@ -63,7 +64,7 @@ class BigQueryLoader:
             if not data_key or data_key not in data:
                 continue
 
-            table_full_name = f"{self.project}.{self.dataset_id}.{table_id}"
+            table_full_name = f"{self.dataset}.{table_id}"
 
             job_config = bigquery.LoadJobConfig(
                 schema=TABLES[table_id]["schema"],
@@ -81,7 +82,7 @@ class BigQueryLoader:
         return jobs
 
     def prepare(self):
-        dataset = bigquery.Dataset(f"{self.project}.{self.dataset_id}")
+        dataset = bigquery.Dataset(f"{self.dataset}")
         dataset.location = self.location
         dataset = self.client.create_dataset(dataset, exists_ok=True)
 
@@ -90,45 +91,51 @@ class BigQueryLoader:
         for table_id in TABLES.keys():
             self.create_table(table_id)
 
-    def tidyup(self):
-        dataset = f"{self.project}.{self.dataset_id}"
-
-        buffer_table = self.client.get_table(f"{dataset}.queries_buffer")
-        if buffer_table.num_rows == 0:
-            # No newcomers
-            return []
-
-        jobs = []
-
-        select_cols = ", ".join(map(lambda x: x.name, TABLES["queries"]["schema"]))
-        job = self.client.query(
-            f"""
--- add newcommers from queries_buffer to queries
-CREATE OR REPLACE TABLE `{dataset}.queries`
-AS
-WITH all_queries AS (
-  SELECT {select_cols} FROM `{dataset}.queries`
-  UNION ALL
-  SELECT {select_cols} FROM `{dataset}.queries_buffer`
-)
-SELECT DISTINCT {select_cols}
-FROM all_queries;
-
--- delete known queries from queries_buffer
-DELETE FROM `{dataset}.queries_buffer` qb
-WHERE EXISTS (
+    def _count_new_queries(self):
+        return list(
+            self.client.query(
+                f"""
+SELECT COUNT(qb.id) FROM `{self.dataset}.queries_buffer` qb
+WHERE NOT EXISTS (
   SELECT 1
-  FROM `{dataset}.queries` q
+  FROM `{self.dataset}.queries` q
   WHERE qb.id = q.id
 );
         """
-        )
-        jobs.append(job)
+            ).result()
+        )[0][0]
 
-        return jobs
+    def _add_new_queries(self):
+        select_cols = ", ".join(map(lambda x: x.name, TABLES["queries"]["schema"]))
+        self.client.query(
+            f"""
+-- add newcommers from queries_buffer to queries
+INSERT INTO `{self.dataset}.queries`
+SELECT DISTINCT {select_cols} FROM `{self.dataset}.queries_buffer` qb
+WHERE NOT EXISTS (
+  SELECT 1
+  FROM `{self.dataset}.queries` q
+  WHERE qb.id = q.id
+);
+        """
+        ).result()
+
+    def tidyup(self):
+        buffer_table = self.client.get_table(f"{self.dataset}.queries_buffer")
+        if buffer_table.num_rows == 0:
+            # nothing to do
+            return
+
+        new_queries_count = self._count_new_queries()
+        if new_queries_count > 0:
+            print(f"we are going to add new queries: {new_queries_count}")
+            self._add_new_queries()
+
+        self.client.delete_table(buffer_table)
+        self.create_table("queries_buffer")
 
     def create_table(self, table_id):
-        table_full_name = f"{self.project}.{self.dataset_id}.{table_id}"
+        table_full_name = f"{self.dataset}.{table_id}"
 
         table = bigquery.Table(table_full_name, schema=TABLES[table_id]["schema"])
         if TABLES[table_id]["time_partitioning"]:
