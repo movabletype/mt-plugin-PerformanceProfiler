@@ -113,6 +113,9 @@ COALESCE(
                 ),
             )
         ],
+        "return_type": bigquery_v2.types.StandardSqlDataType(
+            type_kind=bigquery_v2.types.StandardSqlDataType.TypeKind.TIMESTAMP
+        ),
         "description": """
 Get the timestamp of n days ago
 
