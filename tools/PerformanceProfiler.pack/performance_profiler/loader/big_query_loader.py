@@ -52,12 +52,13 @@ TABLES["queries_buffer"]["load_data_key"] = "queries"
 
 VIEWS = {
     "logs_agg": {
+        "clustering_fields": ["product_version"],
         "mview_query": """
 SELECT
   product_version,
   APPROX_COUNT_DISTINCT(builds.id) build_count,
   COUNT(logs.runtime) log_count,
-  AVG(logs.runtime) runtime,
+  AVG(logs.runtime) avg_runtime,
   package,
   line,
   query_id
@@ -252,7 +253,7 @@ WHERE NOT EXISTS (
             # XXX: google-cloud-bigquery@1.26.1 does not support "mview_query"
             opts = ""
             if "clustering_fields" in VIEWS[table_id]:
-                opts += "CLUSTER BY " + ",".join(product_version)
+                opts += "CLUSTER BY " + ",".join(VIEWS[table_id]["clustering_fields"])
 
             self.client.query(
                 f"""
