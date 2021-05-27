@@ -58,7 +58,7 @@ SELECT
   product_version,
   APPROX_COUNT_DISTINCT(builds.id) build_count,
   COUNT(logs.runtime) log_count,
-  AVG(logs.runtime) runtime,
+  AVG(logs.runtime) avg_runtime,
   package,
   line,
   query_id
