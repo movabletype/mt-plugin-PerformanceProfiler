@@ -50,6 +50,30 @@ TABLES = {
 TABLES["queries_buffer"] = copy.copy(TABLES["queries"])
 TABLES["queries_buffer"]["load_data_key"] = "queries"
 
+VIEWS = {
+    "logs_agg": {
+        "mview_query": """
+SELECT
+  product_version,
+  APPROX_COUNT_DISTINCT(builds.id) build_count,
+  COUNT(logs.runtime) log_count,
+  AVG(logs.runtime) runtime,
+  package,
+  line,
+  query_id
+FROM
+  {dataset}.builds builds,
+  UNNEST(logs) logs
+WHERE timestamp >= "2000-01-01"
+GROUP BY
+  product_version,
+  package,
+  line,
+  query_id
+        """,
+    },
+}
+
 ROUTINES = {
     "from_tables": {
         "type_": "SCALAR_FUNCTION",
@@ -154,6 +178,9 @@ class BigQueryLoader:
         for table_id in TABLES.keys():
             self._create_table(table_id)
 
+        for table_id in VIEWS.keys():
+            self._create_view(table_id)
+
         for routine_id in ROUTINES.keys():
             self._create_routine(routine_id)
 
@@ -213,3 +240,25 @@ WHERE NOT EXISTS (
 
         table = self.client.create_table(table, exists_ok=True)
         print(f"Created table {table.project}.{table.dataset_id}.{table.table_id}")
+
+    def _create_view(self, table_id):
+        table_full_name = f"{self.dataset}.{table_id}"
+
+        if "view_query" in VIEWS[table_id]:
+            table = bigquery.Table(table_full_name)
+            table.view_query = VIEWS[table_id]["view_query"]
+            table = self.client.create_table(table, exists_ok=True)
+        elif "mview_query" in VIEWS[table_id]:
+            # XXX: google-cloud-bigquery@1.26.1 does not support "mview_query"
+            opts = ""
+            if "clustering_fields" in VIEWS[table_id]:
+                opts += "CLUSTER BY " + ",".join(product_version)
+
+            self.client.query(
+                f"""
+CREATE MATERIALIZED VIEW IF NOT EXISTS {table_full_name} {opts} AS
+{VIEWS[table_id]["mview_query"].format(dataset=self.dataset)}
+            """
+            ).result()
+
+        print(f"Created view {table_full_name}.{table_id}")
