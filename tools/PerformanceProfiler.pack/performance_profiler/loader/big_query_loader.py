@@ -78,6 +78,7 @@ GROUP BY
 ROUTINES = {
     "from_tables": {
         "type_": "SCALAR_FUNCTION",
+        "language": "JavaScript",
         "arguments": [
             bigquery.RoutineArgument(
                 name="structure",
@@ -86,6 +87,12 @@ ROUTINES = {
                 ),
             )
         ],
+        "return_type": bigquery_v2.types.StandardSqlDataType(
+            type_kind=bigquery_v2.types.StandardSqlDataType.TypeKind.ARRAY,
+            array_element_type=bigquery_v2.types.StandardSqlDataType(
+                type_kind=bigquery_v2.types.StandardSqlDataType.TypeKind.STRING
+            ),
+        ),
         "description": """
 Extract table names from FROM clause.
 
@@ -94,13 +101,11 @@ SELECT
   id, identifier, query
 FROM
   kytprof.queries, UNNEST(kytprof.from_tables(structure)) AS table
-WHERE table = '"mt_author"';
+WHERE table = 'mt_author';
 """,
         "body": f"""
-COALESCE(
-  JSON_QUERY_ARRAY(structure, '$.from'),
-  JSON_QUERY_ARRAY('[' || JSON_QUERY(structure, '$.from') || ']')
-)
+var obj = JSON.parse(structure);
+return typeof obj.from === 'string' ? [obj.from] : obj.from;
         """,
     },
     "n_days_ago": {
@@ -113,6 +118,9 @@ COALESCE(
                 ),
             )
         ],
+        "return_type": bigquery_v2.types.StandardSqlDataType(
+            type_kind=bigquery_v2.types.StandardSqlDataType.TypeKind.TIMESTAMP
+        ),
         "description": """
 Get the timestamp of n days ago
 
