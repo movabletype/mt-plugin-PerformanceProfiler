@@ -90,7 +90,7 @@ class BigQueryLoader:
         print(f"Created dataset {dataset.project}.{dataset.dataset_id}")
 
         for table_id in TABLES.keys():
-            self.create_table(table_id)
+            self._create_table(table_id)
 
     def _count_new_queries(self):
         return list(
@@ -133,9 +133,9 @@ WHERE NOT EXISTS (
             self._add_new_queries()
 
         self.client.delete_table(buffer_table)
-        self.create_table("queries_buffer")
+        self._create_table("queries_buffer")
 
-    def create_table(self, table_id):
+    def _create_table(self, table_id):
         table_full_name = f"{self.dataset}.{table_id}"
 
         table = bigquery.Table(table_full_name, schema=TABLES[table_id]["schema"])
