@@ -56,8 +56,10 @@ VIEWS = {
         "mview_query": """
 SELECT
   product_version,
-  APPROX_COUNT_DISTINCT(builds.id) build_count,
+  HLL_COUNT.INIT(builds.id, 18) build_hll,
+  HLL_COUNT.INIT(builds.instance_id, 18) instance_hll,
   COUNT(logs.runtime) log_count,
+  MAX(logs.runtime) max_runtime,
   AVG(logs.runtime) avg_runtime,
   package,
   line,
