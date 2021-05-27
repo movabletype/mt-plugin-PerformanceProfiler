@@ -12,6 +12,7 @@ TABLES = {
         ),
         "clustering_fields": ["product_version"],
         "schema": [
+            bigquery.SchemaField("id", "BYTES", mode="REQUIRED"),
             bigquery.SchemaField("version", "STRING", mode="REQUIRED"),
             bigquery.SchemaField("product_version", "STRING", mode="REQUIRED"),
             bigquery.SchemaField("instance_id", "STRING", mode="REQUIRED"),

@@ -32,6 +32,7 @@ def test_transform():
     assert data == {
         "builds": [
             {
+                "id": "7b28a232f123584b26d2caa4ef53adf4a9823975",
                 "file": "1db8f6cf7923be9c5694945eda20ce50719e19b1",
                 "version": "6.7",
                 "product_version": "6.7.8",
