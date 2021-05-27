@@ -1,5 +1,6 @@
 import copy
 from google.cloud import bigquery
+from google.cloud import bigquery_v2
 
 DEFAULT_DATASET_ID = "kytprof"
 
@@ -12,6 +13,7 @@ TABLES = {
         ),
         "clustering_fields": ["product_version"],
         "schema": [
+            bigquery.SchemaField("id", "BYTES", mode="REQUIRED"),
             bigquery.SchemaField("version", "STRING", mode="REQUIRED"),
             bigquery.SchemaField("product_version", "STRING", mode="REQUIRED"),
             bigquery.SchemaField("instance_id", "STRING", mode="REQUIRED"),
@@ -48,6 +50,82 @@ TABLES = {
 TABLES["queries_buffer"] = copy.copy(TABLES["queries"])
 TABLES["queries_buffer"]["load_data_key"] = "queries"
 
+VIEWS = {
+    "logs_agg": {
+        "mview_query": """
+SELECT
+  product_version,
+  APPROX_COUNT_DISTINCT(builds.id) build_count,
+  COUNT(logs.runtime) log_count,
+  AVG(logs.runtime) runtime,
+  package,
+  line,
+  query_id
+FROM
+  {dataset}.builds builds,
+  UNNEST(logs) logs
+WHERE timestamp >= "2000-01-01"
+GROUP BY
+  product_version,
+  package,
+  line,
+  query_id
+        """,
+    },
+}
+
+ROUTINES = {
+    "from_tables": {
+        "type_": "SCALAR_FUNCTION",
+        "arguments": [
+            bigquery.RoutineArgument(
+                name="structure",
+                data_type=bigquery_v2.types.StandardSqlDataType(
+                    type_kind=bigquery_v2.types.StandardSqlDataType.TypeKind.STRING
+                ),
+            )
+        ],
+        "description": """
+Extract table names from FROM clause.
+
+Example:
+SELECT
+  id, identifier, query
+FROM
+  kytprof.queries, UNNEST(kytprof.from_tables(structure)) AS table
+WHERE table = '"mt_author"';
+""",
+        "body": f"""
+COALESCE(
+  JSON_QUERY_ARRAY(structure, '$.from'),
+  JSON_QUERY_ARRAY('[' || JSON_QUERY(structure, '$.from') || ']')
+)
+        """,
+    },
+    "n_days_ago": {
+        "type_": "SCALAR_FUNCTION",
+        "arguments": [
+            bigquery.RoutineArgument(
+                name="n",
+                data_type=bigquery_v2.types.StandardSqlDataType(
+                    type_kind=bigquery_v2.types.StandardSqlDataType.TypeKind.INT64
+                ),
+            )
+        ],
+        "description": """
+Get the timestamp of n days ago
+
+Example:
+SELECT COUNT(id)
+FROM kytprof.builds
+WHERE timestamp > kytprof.n_days_ago(90) AND product_version = '7.7.0'
+""",
+        "body": f"""
+DATE_SUB(CURRENT_TIMESTAMP(), interval n DAY)
+        """,
+    },
+}
+
 
 class BigQueryLoader:
     def __init__(self, opts):
@@ -81,6 +159,15 @@ class BigQueryLoader:
 
         return jobs
 
+    def _create_routine(self, routine_id):
+        routine_full_name = f"{self.dataset}.{routine_id}"
+
+        routine = bigquery.Routine(routine_full_name, **ROUTINES[routine_id])
+        routine = self.client.create_routine(routine, exists_ok=True)
+        print(
+            f"Created routine {routine.project}.{routine.dataset_id}.{routine.routine_id}"
+        )
+
     def prepare(self):
         dataset = bigquery.Dataset(f"{self.dataset}")
         dataset.location = self.location
@@ -89,7 +176,13 @@ class BigQueryLoader:
         print(f"Created dataset {dataset.project}.{dataset.dataset_id}")
 
         for table_id in TABLES.keys():
-            self.create_table(table_id)
+            self._create_table(table_id)
+
+        for table_id in VIEWS.keys():
+            self._create_view(table_id)
+
+        for routine_id in ROUTINES.keys():
+            self._create_routine(routine_id)
 
     def _count_new_queries(self):
         return list(
@@ -132,9 +225,9 @@ WHERE NOT EXISTS (
             self._add_new_queries()
 
         self.client.delete_table(buffer_table)
-        self.create_table("queries_buffer")
+        self._create_table("queries_buffer")
 
-    def create_table(self, table_id):
+    def _create_table(self, table_id):
         table_full_name = f"{self.dataset}.{table_id}"
 
         table = bigquery.Table(table_full_name, schema=TABLES[table_id]["schema"])
@@ -147,3 +240,25 @@ WHERE NOT EXISTS (
 
         table = self.client.create_table(table, exists_ok=True)
         print(f"Created table {table.project}.{table.dataset_id}.{table.table_id}")
+
+    def _create_view(self, table_id):
+        table_full_name = f"{self.dataset}.{table_id}"
+
+        if "view_query" in VIEWS[table_id]:
+            table = bigquery.Table(table_full_name)
+            table.view_query = VIEWS[table_id]["view_query"]
+            table = self.client.create_table(table, exists_ok=True)
+        elif "mview_query" in VIEWS[table_id]:
+            # XXX: google-cloud-bigquery@1.26.1 does not support "mview_query"
+            opts = ""
+            if "clustering_fields" in VIEWS[table_id]:
+                opts += "CLUSTER BY " + ",".join(product_version)
+
+            self.client.query(
+                f"""
+CREATE MATERIALIZED VIEW IF NOT EXISTS {table_full_name} {opts} AS
+{VIEWS[table_id]["mview_query"].format(dataset=self.dataset)}
+            """
+            ).result()
+
+        print(f"Created view {table_full_name}.{table_id}")

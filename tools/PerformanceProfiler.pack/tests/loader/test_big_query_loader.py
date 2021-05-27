@@ -34,6 +34,7 @@ class TestLoad:
         data = {
             "builds": [
                 {
+                    "id": base64.b64encode(b"x").decode("utf-8"),
                     "version": "1",
                     "product_version": "1",
                     "instance_id": "x",
@@ -75,6 +76,7 @@ class TestLoad:
         data = {
             "builds": [
                 {
+                    "id": base64.b64encode(b"x").decode("utf-8"),
                     "version": "1",
                     "product_version": "1",
                     "instance_id": "x",

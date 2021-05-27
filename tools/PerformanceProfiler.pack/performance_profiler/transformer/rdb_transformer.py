@@ -34,7 +34,6 @@ class RDBTransformer:
 
     def transform(self, data):
         build = copy(data["build"])
-        build.pop("id")
         build["logs"] = []
         queries = []
 
