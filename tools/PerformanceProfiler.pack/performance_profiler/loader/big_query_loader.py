@@ -1,5 +1,6 @@
 import copy
 from google.cloud import bigquery
+from google.cloud import bigquery_v2
 
 DEFAULT_DATASET_ID = "kytprof"
 
@@ -49,6 +50,58 @@ TABLES = {
 TABLES["queries_buffer"] = copy.copy(TABLES["queries"])
 TABLES["queries_buffer"]["load_data_key"] = "queries"
 
+ROUTINES = {
+    "from_tables": {
+        "type_": "SCALAR_FUNCTION",
+        "arguments": [
+            bigquery.RoutineArgument(
+                name="structure",
+                data_type=bigquery_v2.types.StandardSqlDataType(
+                    type_kind=bigquery_v2.types.StandardSqlDataType.TypeKind.STRING
+                ),
+            )
+        ],
+        "description": """
+Extract table names from FROM clause.
+
+Example:
+SELECT
+  id, identifier, query
+FROM
+  kytprof.queries, UNNEST(kytprof.from_tables(structure)) AS table
+WHERE table = '"mt_author"';
+""",
+        "body": f"""
+COALESCE(
+  JSON_QUERY_ARRAY(structure, '$.from'),
+  JSON_QUERY_ARRAY('[' || JSON_QUERY(structure, '$.from') || ']')
+)
+        """,
+    },
+    "n_days_ago": {
+        "type_": "SCALAR_FUNCTION",
+        "arguments": [
+            bigquery.RoutineArgument(
+                name="n",
+                data_type=bigquery_v2.types.StandardSqlDataType(
+                    type_kind=bigquery_v2.types.StandardSqlDataType.TypeKind.INT64
+                ),
+            )
+        ],
+        "description": """
+Get the timestamp of n days ago
+
+Example:
+SELECT COUNT(id)
+FROM kytprof.builds
+WHERE timestamp > kytprof.n_days_ago(90) AND product_version = '7.7.0'
+""",
+        "body": f"""
+DATE_SUB(CURRENT_TIMESTAMP(), interval n DAY)
+        """,
+    },
+}
+
 
 class BigQueryLoader:
     def __init__(self, opts):
@@ -82,6 +135,15 @@ class BigQueryLoader:
 
         return jobs
 
+    def _create_routine(self, routine_id):
+        routine_full_name = f"{self.dataset}.{routine_id}"
+
+        routine = bigquery.Routine(routine_full_name, **ROUTINES[routine_id])
+        routine = self.client.create_routine(routine, exists_ok=True)
+        print(
+            f"Created routine {routine.project}.{routine.dataset_id}.{routine.routine_id}"
+        )
+
     def prepare(self):
         dataset = bigquery.Dataset(f"{self.dataset}")
         dataset.location = self.location
@@ -91,6 +153,9 @@ class BigQueryLoader:
 
         for table_id in TABLES.keys():
             self._create_table(table_id)
+
+        for routine_id in ROUTINES.keys():
+            self._create_routine(routine_id)
 
     def _count_new_queries(self):
         return list(
