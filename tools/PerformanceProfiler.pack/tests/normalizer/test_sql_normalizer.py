@@ -154,3 +154,20 @@ def test_normalize_different(different_queries):
         lambda x: x[0], map(normalizer.normalize, different_queries)
     )
     assert len(set(normalized_queries)) > 1
+
+
+@pytest.mark.parametrize(
+    "unsupported_query",
+    [
+        """
+    INSERT INTO mt_entry (entry_title) VALUES ('a')
+    """,
+        """
+    UPDATE mt_entry SET entry_title = 'a'
+    """,
+    ],
+)
+def test_unsupported_queries(unsupported_query):
+    res, structure = normalizer.normalize(unsupported_query)
+    assert unsupported_query == res
+    assert structure == {}

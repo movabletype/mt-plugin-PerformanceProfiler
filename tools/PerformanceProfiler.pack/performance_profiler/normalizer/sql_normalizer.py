@@ -36,7 +36,10 @@ def truncate_id_in(parsed):
 class SQLNormalizer:
     def normalize(self, sql):
         sql = sql.replace("?", PLACEHOLDER)
-        parsed = parse(sql)
-        sort_terms(parsed)
-        truncate_id_in(parsed)
-        return (format(parsed).replace(PLACEHOLDER, "?"), parsed)
+        try:
+            parsed = parse(sql)
+            sort_terms(parsed)
+            truncate_id_in(parsed)
+            return (format(parsed).replace(PLACEHOLDER, "?"), parsed)
+        except:
+            return (sql, {})
