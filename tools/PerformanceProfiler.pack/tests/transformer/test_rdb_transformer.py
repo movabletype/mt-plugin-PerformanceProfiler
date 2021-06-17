@@ -59,3 +59,59 @@ def test_transform():
             }
         ],
     }
+
+
+def test_transform_unsupported_query():
+    data = transformer.transform(
+        {
+            "build": {
+                "file": "1db8f6cf7923be9c5694945eda20ce50719e19b1",
+                "version": "6.7",
+                "product_version": "6.7.8",
+                "runtime": 0.35336,
+                "timestamp": "2021-04-26T00:16:36Z",
+                "instance_id": "32b57e3dc152",
+                "archive_type": "index",
+                "id": "7b28a232f123584b26d2caa4ef53adf4a9823975",
+            },
+            "logs": [
+                {
+                    "runtime": 0.405,
+                    "package": "MT::Template",
+                    "line": 408,
+                    "query": "INSERT INTO mt_entry (entry_title) VALUES ('a')",
+                }
+            ],
+        }
+    )
+
+    assert data == {
+        "builds": [
+            {
+                "file": "1db8f6cf7923be9c5694945eda20ce50719e19b1",
+                "version": "6.7",
+                "product_version": "6.7.8",
+                "runtime": 0.35336,
+                "timestamp": "2021-04-26T00:16:36Z",
+                "instance_id": "32b57e3dc152",
+                "archive_type": "index",
+                "id": "7b28a232f123584b26d2caa4ef53adf4a9823975",
+                "logs": [
+                    {
+                        "runtime": 0.405,
+                        "package": "MT::Template",
+                        "line": 408,
+                        "query_id": "9OhE2nWQ3p06nGcdcyql3O2Vt+4=",
+                    }
+                ],
+            }
+        ],
+        "queries": [
+            {
+                "query": "INSERT INTO mt_entry (entry_title) VALUES ('a')",
+                "id": "9OhE2nWQ3p06nGcdcyql3O2Vt+4=",
+                "identifier": "9OhE2nWQ3p06nGcdcyql3O2Vt+4=",
+                "structure": "{}",
+            }
+        ],
+    }
