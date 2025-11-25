@@ -46,5 +46,4 @@ jobs:
             -w /app \
             -e MT_TEST_ENV_ADMIN_THEME_ID=${{ matrix.admin_theme_id }} \
             ghcr.io/movabletype/movabletype/test:${{ matrix.config.image }} \
-            prove -j4 -PMySQLPool=MT::Test::Env -It/lib \
-              addons/PerformanceProfiler.pack/t
+            bash -c 'cpm install -g Devel::NYTProf && prove -j4 -PMySQLPool=MT::Test::Env -It/lib addons/PerformanceProfiler.pack/t'
