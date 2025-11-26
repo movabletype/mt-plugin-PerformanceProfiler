@@ -37,7 +37,7 @@ jobs:
         with:
           name: plugin
           path: |
-            PerformanceProfiler-*
+            mt-plugin-PerformanceProfiler-*
 
       - name: Upload tarball
         id: upload-tarball
@@ -45,7 +45,7 @@ jobs:
         with:
           name: tarball
           path: |
-            PerformanceProfiler-*.tar.gz
+            mt-plugin-PerformanceProfiler-*.tar.gz
 
       - name: Add comment to PR
         uses: peter-evans/create-or-update-comment@71345be0265236311c031f5c7866368bd1eff043
@@ -66,5 +66,5 @@ jobs:
         with:
           draft: true
           files: |
-            PerformanceProfiler-*.zip
-            PerformanceProfiler-*.tar.gz
+            mt-plugin-PerformanceProfiler-*.zip
+            mt-plugin-PerformanceProfiler-*.tar.gz
